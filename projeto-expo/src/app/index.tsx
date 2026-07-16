@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,9 +9,13 @@ import {
   StatusBar,
   Dimensions,
   Image,
+  RefreshControl,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
@@ -28,6 +32,8 @@ const menuItems = [
 ];
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   const renderIcon = (family, name, size = 24, color = '#FFFFFF') => {
     switch (family) {
       case 'FontAwesome5':
@@ -43,17 +49,89 @@ export default function HomeScreen() {
     }
   };
 
+  const [currentVerse, setCurrentVerse] = useState(null);
+  const [loadingVerse, setLoadingVerse] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchRandomVerse = async () => {
+    // Evita carregamento infinito limitando a espera a 4 segundos
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    try {
+      setLoadingVerse(true);
+      
+      // Usando uma API internacional mais rápida, sem problemas de CORS
+      const apiUrl = `https://bible-api.com/?random=verse&translation=almeida&t=${new Date().getTime()}`;
+      
+      const response = await fetch(apiUrl, { 
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      if (!response.ok) throw new Error('Network response falhou');
+      
+      const data = await response.json();
+
+      setCurrentVerse({
+        text: data.text.trim(),
+        reference: data.reference,
+      });
+    } catch (error) {
+      console.log('Erro ao buscar versículo:', error);
+      
+      // Fallbacks aleatórios para caso a internet caia ou a API falhe
+      const fallbacks = [
+        { text: "Tudo posso naquele que me fortalece.", reference: "Filipenses 4:13" },
+        { text: "O Senhor é o meu pastor; de nada terei falta.", reference: "Salmos 23:1" },
+        { text: "Entregue o seu caminho ao Senhor; confie nele, e ele o fará.", reference: "Salmos 37:5" },
+        { text: "Deixo a paz a vocês; a minha paz dou a vocês.", reference: "João 14:27" },
+        { text: "O amor é paciente, o amor é bondoso.", reference: "1 Coríntios 13:4" }
+      ];
+      
+      const randomFallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+      setCurrentVerse(randomFallback);
+    } finally {
+      setLoadingVerse(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRandomVerse();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchRandomVerse();
+    setRefreshing(false);
+  };
+
+  const openSocialApp = async (appUrl, webUrl) => {
+    try {
+      // Tenta verificar se o celular consegue abrir o link nativo do App (ex: instagram://)
+      const supported = await Linking.canOpenURL(appUrl);
+      if (supported) {
+        await Linking.openURL(appUrl); // Abre o App
+      } else {
+        await Linking.openURL(webUrl); // Fallback: Abre no navegador
+      }
+    } catch (error) {
+      await Linking.openURL(webUrl); // Fallback: Abre no navegador
+    }
+  };
+
   return (
     <LinearGradient
       colors={['#050B14', '#0B1A30', '#050B14']}
       style={styles.container}
     >
-      <Image 
-        source={require('./Img/Bg.jpg')} 
-        style={styles.backgroundImage} 
+      <Image
+        source={require('../../assets/Img/Bg.jpg')}
+        style={styles.backgroundImage}
       />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
+
       {/* Header */}
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
@@ -66,41 +144,67 @@ export default function HomeScreen() {
         </View>
       </SafeAreaView>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FFFFFF"
+            colors={['#0B1A30']}
+          />
+        }
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.logoCircle}>
             <View style={styles.logoCircleInner}>
-              <Image 
-                source={require('./Img/logo.jpg')}
+              <Image
+                source={require('../../assets/Img/logo.jpg')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
               {/* NOTA TÉCNICA: Para o efeito transparente perfeito sem fundo marrom, a imagem física 'logo.jpg' deve ser convertida previamente em um PNG com fundo transparente. O overflow: 'hidden' no container tenta mascarar as bordas por enquanto. */}
             </View>
           </View>
-          <Text style={styles.logoText}>LOGO DA SUA IGREJA</Text>
+          <Text style={styles.logoText}>Ministério IDE</Text>
           <Text style={styles.subtitleText}>
-            O aplicativo da sua igreja,{'\n'}com a sua identidade.
+            Identidade, Discipulado, Envio.{'\n'} Uma família de muitos filhos semelhantes à Jesus!
           </Text>
         </View>
 
         {/* Versicle Banner */}
         <View style={styles.bannerContainer}>
           <Text style={styles.bannerTitle}>VERSÍCULO DO DIA</Text>
-          <Text style={styles.bannerText}>
-            "Tudo posso naquele que me fortalece."
-          </Text>
-          <Text style={styles.bannerReference}>Filipenses 4:13</Text>
+          {loadingVerse && !refreshing ? (
+            <ActivityIndicator size="small" color="#FFFFFF" style={{ marginVertical: 10 }} />
+          ) : (
+            <>
+              <Text style={styles.bannerText}>
+                "{currentVerse?.text}"
+              </Text>
+              <Text style={styles.bannerReference}>{currentVerse?.reference}</Text>
+            </>
+          )}
         </View>
 
         {/* Main Menu Grid */}
         <View style={styles.menuContainer}>
           {menuItems.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.menuItem}>
+            <TouchableOpacity 
+              key={item.id} 
+              style={styles.menuItem}
+              onPress={() => {
+                if (item.title === 'Igreja') {
+                  router.push('/igreja');
+                } else if (item.title === 'Ministérios') {
+                  router.push('/ministerios');
+                } else if (item.title === 'Cultos') {
+                  router.push('/cultos');
+                }
+              }}
+            >
               <View style={styles.menuIconButton}>
                 {renderIcon(item.family, item.icon, 26)}
               </View>
@@ -111,13 +215,16 @@ export default function HomeScreen() {
 
         {/* Footer (Social Media) */}
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.socialButton}>
+          <TouchableOpacity 
+            style={styles.socialButton}
+            onPress={() => openSocialApp('instagram://user?username=ministerioide.rj', 'https://www.instagram.com/ministerioide.rj/')}
+          >
             <Feather name="instagram" size={22} color="#CCCCCC" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Feather name="facebook" size={22} color="#CCCCCC" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
+          <TouchableOpacity 
+            style={styles.socialButton}
+            onPress={() => openSocialApp('vnd.youtube://www.youtube.com/@MinisterioIDE_rj', 'https://www.youtube.com/@MinisterioIDE_rj')}
+          >
             <Feather name="youtube" size={22} color="#CCCCCC" />
           </TouchableOpacity>
         </View>
