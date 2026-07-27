@@ -27,7 +27,7 @@ export default function ServicesScreen() {
   const handleOpenMaps = () => {
     const address = 'Estr. de Paciência, 1258 - Cosmos, Rio de Janeiro';
     const encodedAddress = encodeURIComponent(address);
-    
+
     const url = Platform.select({
       ios: `maps:0,0?q=${encodedAddress}`,
       android: `geo:0,0?q=${encodedAddress}`,
@@ -42,7 +42,7 @@ export default function ServicesScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
+
       {/* Header */}
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
@@ -54,7 +54,7 @@ export default function ServicesScreen() {
         </View>
       </SafeAreaView>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -66,7 +66,7 @@ export default function ServicesScreen() {
         <View style={styles.card}>
           <View style={styles.cardInfo}>
             <View style={styles.iconContainer}>
-              <FontAwesome5 name="home" size={20} color="#FFFFFF" />
+              <FontAwesome5 name="church" size={20} color="#FFFFFF" />
             </View>
             <View>
               <Text style={styles.cardTitle}>Culto da Família</Text>
@@ -104,11 +104,11 @@ export default function ServicesScreen() {
                 <Text style={styles.webMapText}>Mapa nativo disponível no celular</Text>
               </View>
             ) : (
-              <MapView 
-                style={styles.map} 
+              <MapView
+                style={styles.map}
                 initialRegion={churchLocation}
               >
-                <Marker 
+                <Marker
                   coordinate={{ latitude: -22.9105, longitude: -43.6268 }}
                   title="Ministério IDE"
                   description="Nossa Igreja"
@@ -117,8 +117,8 @@ export default function ServicesScreen() {
             )}
           </View>
 
-          <TouchableOpacity 
-            style={styles.routeButton} 
+          <TouchableOpacity
+            style={styles.routeButton}
             activeOpacity={0.8}
             onPress={handleOpenMaps}
           >

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,6 +12,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Linking,
+  Pressable,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -28,7 +30,7 @@ const menuItems = [
   { id: '6', title: 'Devocional', icon: 'book-open', family: 'Feather' },
   { id: '7', title: 'Pedidos', icon: 'praying-hands', family: 'FontAwesome5' },
   { id: '8', title: 'Doações', icon: 'hand-holding-heart', family: 'FontAwesome5' },
-  { id: '9', title: 'Bíblia', icon: 'bible', family: 'FontAwesome5' },
+  { id: '9', title: 'Avisos', icon: 'bell', family: 'Feather' },
 ];
 
 export default function HomeScreen() {
@@ -52,6 +54,18 @@ export default function HomeScreen() {
   const [currentVerse, setCurrentVerse] = useState(null);
   const [loadingVerse, setLoadingVerse] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const slideAnim = useRef(new Animated.Value(width)).current;
+
+  const toggleMenu = (open) => {
+    setIsMenuOpen(open);
+    Animated.timing(slideAnim, {
+      toValue: open ? 0 : width,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const fetchRandomVerse = async () => {
     // Evita carregamento infinito limitando a espera a 4 segundos
@@ -134,12 +148,9 @@ export default function HomeScreen() {
 
       {/* Header */}
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Feather name="settings" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Feather name="user" size={22} color="#FFFFFF" />
+        <View style={[styles.header, { justifyContent: 'flex-end' }]}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => toggleMenu(true)}>
+            <Feather name="menu" size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -202,6 +213,16 @@ export default function HomeScreen() {
                   router.push('/ministerios');
                 } else if (item.title === 'Cultos') {
                   router.push('/cultos');
+                } else if (item.title === 'Devocional') {
+                  router.push('/devocional');
+                } else if (item.title === 'Células') {
+                  router.push('/celulas');
+                } else if (item.title === 'Pedidos') {
+                  router.push('/pedidos');
+                } else if (item.title === 'Doações') {
+                  router.push('/doacoes');
+                } else if (item.title === 'Avisos') {
+                  router.push('/avisos');
                 }
               }}
             >
@@ -229,6 +250,65 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Backdrop (Fundo Escurecido) */}
+      {isMenuOpen && (
+        <Pressable 
+          style={styles.drawerBackdrop} 
+          onPress={() => toggleMenu(false)} 
+        />
+      )}
+
+      {/* Drawer Customizado (Animated) */}
+      <Animated.View 
+        style={[
+          styles.drawerContainer, 
+          { transform: [{ translateX: slideAnim }] }
+        ]}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.drawerHeader}>
+            <View style={styles.avatarCircle}>
+              <Feather name="user" size={32} color="#FFFFFF" />
+            </View>
+            <Text style={styles.drawerUserName}>Olá, Irmão(ã)</Text>
+          </View>
+          
+          <ScrollView contentContainerStyle={styles.drawerContent}>
+            <TouchableOpacity style={styles.drawerOption} onPress={() => toggleMenu(false)}>
+              <Feather name="user" size={20} color="#FFFFFF" />
+              <Text style={styles.drawerOptionText}>Meu Perfil</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.drawerOption} onPress={() => toggleMenu(false)}>
+              <FontAwesome5 name="id-card" size={20} color="#FFFFFF" />
+              <Text style={styles.drawerOptionText}>Carteirinha</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.drawerOption} onPress={() => toggleMenu(false)}>
+              <Feather name="bell" size={20} color="#FFFFFF" />
+              <Text style={styles.drawerOptionText}>Notificações</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.drawerOption} onPress={() => toggleMenu(false)}>
+              <Feather name="type" size={20} color="#FFFFFF" />
+              <Text style={styles.drawerOptionText}>Tamanho da Fonte</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.drawerOption} onPress={() => toggleMenu(false)}>
+              <Feather name="message-square" size={20} color="#FFFFFF" />
+              <Text style={styles.drawerOptionText}>Falar com a Secretaria</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.drawerDivider} />
+            
+            <TouchableOpacity style={styles.drawerOption} onPress={() => toggleMenu(false)}>
+              <Feather name="log-out" size={20} color="#FF6B6B" />
+              <Text style={[styles.drawerOptionText, { color: '#FF6B6B' }]}>Sair</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Animated.View>
     </LinearGradient>
   );
 }
@@ -388,5 +468,73 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  drawerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    zIndex: 10,
+  },
+  drawerContainer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: '75%',
+    backgroundColor: 'rgba(20,20,35,0.95)',
+    borderLeftWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: -5, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 15,
+  },
+  drawerHeader: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 10,
+  },
+  avatarCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  drawerUserName: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  drawerContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  drawerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  drawerOptionText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginLeft: 16,
+    fontWeight: '500',
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginVertical: 12,
   },
 });
