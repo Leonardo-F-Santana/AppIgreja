@@ -221,6 +221,8 @@ export default function HomeScreen() {
                   router.push('/pedidos');
                 } else if (item.title === 'Doações') {
                   router.push('/doacoes');
+                } else if (item.title === 'Eventos') {
+                  router.push('/eventos');
                 } else if (item.title === 'Avisos') {
                   router.push('/avisos');
                 }

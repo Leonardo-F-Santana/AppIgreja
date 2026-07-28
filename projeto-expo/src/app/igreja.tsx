@@ -11,9 +11,16 @@ import {
 } from 'react-native';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 export default function IgrejaScreen() {
   const router = useRouter();
+
+  const videoSource = require('../../assets/Img/IDEnacoes.mp4');
+  const player = useVideoPlayer(videoSource, player => {
+    player.loop = false;
+    player.play();
+  });
 
   return (
     <View style={styles.container}>
@@ -36,10 +43,13 @@ export default function IgrejaScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* Hero Image */}
-        <Image
-          source={require('../../assets/Img/sobre.jpg')}
-          style={styles.heroImage}
+        {/* Hero Video */}
+        <VideoView 
+          player={player} 
+          style={styles.heroVideo}
+          contentFit="cover"
+          allowsFullscreen={true}
+          nativeControls={false}
         />
 
         {/* Purpose Section */}
@@ -149,12 +159,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  heroImage: {
+  heroVideo: {
     width: '100%',
-    height: 200,
+    height: 250,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     marginBottom: 25,
+    overflow: 'hidden',
   },
   section: {
     paddingHorizontal: 20,
