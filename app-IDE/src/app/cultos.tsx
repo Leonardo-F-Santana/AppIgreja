@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import MapView, { Marker } from 'react-native-maps';
+
 
 export default function ServicesScreen() {
   const router = useRouter();
@@ -98,23 +98,10 @@ export default function ServicesScreen() {
 
           {/* Mapa */}
           <View style={styles.mapContainer}>
-            {Platform.OS === 'web' ? (
-              <View style={styles.webMapFallback}>
-                <Feather name="map" size={32} color="#FFFFFF" style={{ marginBottom: 10 }} />
-                <Text style={styles.webMapText}>Mapa nativo disponível no celular</Text>
-              </View>
-            ) : (
-              <MapView
-                style={styles.map}
-                initialRegion={churchLocation}
-              >
-                <Marker
-                  coordinate={{ latitude: -22.9105, longitude: -43.6268 }}
-                  title="Ministério IDE"
-                  description="Nossa Igreja"
-                />
-              </MapView>
-            )}
+            <View style={styles.webMapFallback}>
+              <Feather name="map" size={32} color="#FFFFFF" style={{ marginBottom: 10 }} />
+              <Text style={styles.webMapText}>Clique abaixo para abrir o mapa</Text>
+            </View>
           </View>
 
           <TouchableOpacity
