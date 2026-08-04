@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Cores base do Sistema de Design (Premium Dark Mode) */
+  --bg-primary: #05050A; /* Fundo principal escuro puro */
+  --bg-secondary: rgba(15, 15, 25, 0.85); /* Fundo Glassmorphism */
+  --bg-tertiary: rgba(255, 255, 255, 0.03); /* Hover states */
+  
+  --glass-border: rgba(255, 255, 255, 0.08); /* Borda ultra fina para contraste */
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #AAAAAA;
+  --text-muted: #666666;
+  
+  /* Cores de destaque vibrantes */
+  --primary: #4ade80; /* Verde principal para salvar/confirmar */
+  --primary-hover: #22c55e;
+  
+  --accent-blue: #60a5fa;
+  --accent-purple: #c084fc;
+  --accent-red: #f87171;
+  --accent-yellow: #facc15;
+  
+  /* Variáveis de layout e tipografia */
+  --font-family: 'Inter', system-ui, sans-serif;
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 20px;
+  
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  --sidebar-width: 260px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  /* Um fundo sutil e dinâmico, simulando iluminação ambiente */
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(74, 222, 128, 0.04), transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(96, 165, 250, 0.04), transparent 40%);
+  background-attachment: fixed;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font-family);
+  transition: all var(--transition-fast);
+}
+
+input, textarea, select {
+  font-family: var(--font-family);
+}
+
+/* 
+ * 🎨 UTILITÁRIOS GLOBAIS DE DESIGN PREMIUM 
+ */
+
+/* Efeito Glassmorphism base */
+.glass-panel {
+  background: var(--bg-secondary);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Botão Primário Moderno */
+.btn-primary {
+  background-color: var(--primary);
+  color: #000;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Tipografia */
+h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-size: 1.25rem; font-weight: 600; }
+p { color: var(--text-secondary); line-height: 1.6; }
+
+/* Animações e Micro-Interações */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s var(--transition-normal) forwards;
+}
