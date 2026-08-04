@@ -11,8 +11,8 @@ export default function TabLayout() {
   const [animationComplete, setAnimationComplete] = useState(false);
   
   // Valores animados
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.8)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     async function prepare() {
@@ -34,21 +34,7 @@ export default function TabLayout() {
       SplashScreen.hideAsync().then(() => {
         // Inicia a sequência de animação
         Animated.sequence([
-          // 1. Entrada (Fade-In + Scale Spring)
-          Animated.parallel([
-            Animated.timing(opacity, {
-              toValue: 1,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-            Animated.spring(scale, {
-              toValue: 1,
-              friction: 6,
-              tension: 40,
-              useNativeDriver: true,
-            }),
-          ]),
-          // 2. Destaque (Pulse)
+          // 1. Destaque (Pulse) logo após a nativa fechar
           Animated.sequence([
             Animated.timing(scale, {
               toValue: 1.05,
