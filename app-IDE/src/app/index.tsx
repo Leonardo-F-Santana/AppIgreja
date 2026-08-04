@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   ImageBackground,
@@ -12,9 +11,13 @@ import {
   TouchableOpacity,
   Dimensions,
   Modal,
+  Linking,
+  Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import SocialFabMenu from '../components/SocialFabMenu';
 
 const { width } = Dimensions.get('window');
 
@@ -37,14 +40,16 @@ const mockNotices = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  
+
   // Estados Dinâmicos
   const [greeting, setGreeting] = useState('Olá');
   const [currentDate, setCurrentDate] = useState('');
-  
+
   // Controle do Drawer
   const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(width)).current;
+
+
 
   // Interpolação para o fundo escuro desaparecer/aparecer junto com a gaveta
   const overlayOpacity = slideAnim.interpolate({
@@ -56,7 +61,7 @@ export default function HomeScreen() {
     if (open) {
       setProfileMenuVisible(true);
       Animated.spring(slideAnim, {
-        toValue: 0, 
+        toValue: 0,
         useNativeDriver: true,
         bounciness: 0,
         speed: 14, // Animação mais rápida e natural (padrão iOS)
@@ -95,13 +100,13 @@ export default function HomeScreen() {
     }
   };
 
-  // Componente de Botão com Micro-Interação (Fake Glass)
-  const AnimatedMenuButton = ({ item }: { item: any }) => {
+  // Componente de Botão do Bento Grid (com Micro-Interação Fake Glass)
+  const BentoCard = ({ title, subtitle, icon, family, route, isLarge, onPressOverride, color = '#4ade80' }) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
 
     const onPressIn = () => {
       Animated.spring(scaleValue, {
-        toValue: 0.96,
+        toValue: 0.97,
         useNativeDriver: true,
       }).start();
     };
@@ -109,7 +114,7 @@ export default function HomeScreen() {
     const onPressOut = () => {
       Animated.spring(scaleValue, {
         toValue: 1,
-        friction: 3,
+        friction: 4,
         tension: 40,
         useNativeDriver: true,
       }).start();
@@ -119,13 +124,66 @@ export default function HomeScreen() {
       <Pressable
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        onPress={() => router.push(item.route)}
+        onPress={() => onPressOverride ? onPressOverride() : (route ? router.push(route as any) : null)}
+        style={isLarge ? styles.bentoCardLargeWrapper : styles.bentoCardSmallWrapper}
       >
-        <Animated.View style={[styles.menuButton, { transform: [{ scale: scaleValue }] }]}>
-          <View style={styles.iconCircle}>
-            {renderIcon(item.family, item.icon, 22, '#4ade80')}
+        <Animated.View style={[styles.bentoCard, isLarge ? styles.bentoCardLarge : styles.bentoCardSmall, { transform: [{ scale: scaleValue }] }]}>
+          <View style={[styles.bentoIconContainer, isLarge && { marginBottom: 0, marginRight: 15 }]}>
+            {renderIcon(family, icon, isLarge ? 24 : 22, color)}
           </View>
-          <Text style={styles.menuTitle}>{item.title}</Text>
+          <View style={styles.bentoTextContainer}>
+            <Text style={styles.bentoTitle}>{title}</Text>
+            {isLarge && subtitle && <Text style={styles.bentoSubtitle}>{subtitle}</Text>}
+          </View>
+          {isLarge && (
+            <View style={styles.bentoActionIcon}>
+              <Feather name="arrow-right" size={20} color="rgba(255,255,255,0.3)" />
+            </View>
+          )}
+        </Animated.View>
+      </Pressable>
+    );
+  };
+
+  // Componente de Card Horizontal (Explorar Mais)
+  const AnimatedMoreCard = ({ item, color }) => {
+    const scaleValue = useRef(new Animated.Value(1)).current;
+
+    const onPressIn = () => {
+      Animated.spring(scaleValue, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const onPressOut = () => {
+      Animated.spring(scaleValue, {
+        toValue: 1,
+        friction: 4,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    // Converter Hex de cor para formato com opacidade (20% -> ~33 em hex, mas podemos usar rgba se preferir)
+    // Para simplificar, vou usar um fundo sutil com o próprio color em um view.
+
+    // Função helper pra aplicar opacidade via style
+    const getBgColorWithOpacity = (hexColor: string) => {
+      return hexColor + '20'; // 20 no final = 12% opacidade em hex
+    };
+
+    return (
+      <Pressable
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        onPress={() => router.push(item.route as any)}
+      >
+        <Animated.View style={[styles.moreCard, { transform: [{ scale: scaleValue }] }]}>
+          <View style={[styles.moreCardIconCircle, { backgroundColor: getBgColorWithOpacity(color) }]}>
+            {renderIcon(item.family, item.icon, 24, color)}
+          </View>
+          <Text style={styles.moreCardTitle}>{item.title}</Text>
         </Animated.View>
       </Pressable>
     );
@@ -159,19 +217,19 @@ export default function HomeScreen() {
   };
 
   return (
-    <ImageBackground 
-      source={require('../../assets/Img/Bg.jpg')} 
+    <ImageBackground
+      source={require('../../assets/Img/Bg.jpg')}
       style={styles.container}
       resizeMode="cover"
     >
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
+
       {/* Overlay escuro em cima da imagem de fundo para dar contraste */}
       <View style={styles.overlay} />
 
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
+
           {/* Header - Saudação Dinâmica */}
           <View style={styles.header}>
             <View>
@@ -192,27 +250,97 @@ export default function HomeScreen() {
               </View>
               <Feather name="bookmark" size={20} color="#AAAAAA" />
             </View>
-            
+
             <Text style={styles.heroTitle}>Culto de Celebração</Text>
             <Text style={styles.heroSubtitle}>Domingo às 19:00 - Sede Principal</Text>
-            
+
             <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/cultos')}>
               <Text style={styles.heroButtonText}>Ver Detalhes</Text>
               <Feather name="arrow-right" size={16} color="#000000" />
             </TouchableOpacity>
           </View>
 
-          {/* Quick Actions (Menu Horizontal) */}
+          {/* Quick Actions (Bento Grid) */}
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Acesso Rápido</Text>
-            <ScrollView 
-              horizontal 
+
+            <View style={styles.bentoContainer}>
+              {/* Row 1 - Destaque */}
+              <View style={styles.bentoRow}>
+                <BentoCard
+                  title="Pedidos de Oração"
+                  subtitle="Envie seus pedidos e interceda"
+                  icon="praying-hands"
+                  family="FontAwesome5"
+                  route="/pedidos"
+                  isLarge={true}
+                  color="#facc15"
+                />
+              </View>
+
+              {/* Row 2 */}
+              <View style={styles.bentoRow}>
+                <BentoCard
+                  title="Células"
+                  icon="account-group"
+                  family="MaterialCommunityIcons"
+                  route="/celulas"
+                  isLarge={false}
+                  color="#60a5fa"
+                />
+                <BentoCard
+                  title="Cultos"
+                  icon="users"
+                  family="Feather"
+                  route="/cultos"
+                  isLarge={false}
+                  color="#f87171"
+                />
+              </View>
+
+              {/* Row 3 */}
+              <View style={styles.bentoRow}>
+                <BentoCard
+                  title="Contribuição"
+                  icon="hand-holding-heart"
+                  family="FontAwesome5"
+                  route="/doacoes"
+                  isLarge={false}
+                  color="#4ade80"
+                />
+                <BentoCard
+                  title="Devocional"
+                  icon="book-open"
+                  family="Feather"
+                  route="/devocional"
+                  isLarge={false}
+                  color="#c084fc"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Explorar Mais (Horizontal Scroll) */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.exploreHeader}>
+              <View>
+                <Text style={styles.sectionTitleWithoutMargin}>Explorar Mais</Text>
+                <Text style={styles.exploreSubtitle}>Deslize para ver mais opções</Text>
+              </View>
+              <Feather name="arrow-right" size={20} color="rgba(255,255,255,0.4)" />
+            </View>
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.menuScrollContent}
+              contentContainerStyle={{ paddingLeft: 20, paddingRight: 8 }}
             >
-              {menuItems.map((item) => (
-                <AnimatedMenuButton key={item.id} item={item} />
-              ))}
+              {/* Igreja */}
+              <AnimatedMoreCard item={menuItems[0]} color="#38bdf8" />
+              {/* Eventos */}
+              <AnimatedMoreCard item={menuItems[4]} color="#fbbf24" />
+              {/* Avisos */}
+              <AnimatedMoreCard item={menuItems[5]} color="#f472b6" />
+              {/* Ministérios */}
+              <AnimatedMoreCard item={menuItems[8]} color="#10b981" />
             </ScrollView>
           </View>
 
@@ -241,42 +369,48 @@ export default function HomeScreen() {
         </ScrollView>
       </SafeAreaView>
 
+      <SocialFabMenu />
+
       {/* Profile Drawer Modal */}
-      <Modal 
-        visible={isProfileMenuVisible} 
-        transparent={true} 
-        animationType="none" 
+      <Modal
+        visible={isProfileMenuVisible}
+        transparent={true}
+        animationType="none"
         onRequestClose={() => toggleProfileMenu(false)}
       >
         <Animated.View style={[styles.modalOverlay, { opacity: overlayOpacity }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => toggleProfileMenu(false)} />
-          
+
           <Animated.View style={[styles.drawerContainer, { transform: [{ translateX: slideAnim }] }]}>
             {/* Drawer Header */}
             <View style={styles.drawerHeader}>
-              <View style={styles.profileAvatarPlaceholder}>
-                <Feather name="user" size={40} color="#4ade80" />
+              <View style={[styles.profileAvatarPlaceholder, { padding: 0, overflow: 'hidden' }]}>
+                <Image
+                  source={require('../../assets/Img/profile.png')}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
               </View>
               <TouchableOpacity style={styles.changePhotoButton}>
                 <Feather name="camera" size={14} color="#AAAAAA" />
                 <Text style={styles.changePhotoText}>Alterar foto de perfil</Text>
               </TouchableOpacity>
-              
+
               <Text style={styles.profileName}>Leonardo</Text>
-              <Text style={styles.profileEmail}>membro@ministerioide.com</Text>
+              <Text style={styles.profileEmail}>discipuloleonardo@gmail.com</Text>
             </View>
 
             {/* Drawer Menu List */}
             <View style={styles.drawerList}>
               <DrawerMenuItem icon="user" title="Editar Perfil" />
               <View style={styles.drawerDivider} />
-              
+
               <DrawerMenuItem icon="settings" title="Configurações" />
               <View style={styles.drawerDivider} />
-              
+
               <DrawerMenuItem icon="heart" title="Minhas Doações" />
               <View style={styles.drawerDivider} />
-              
+
               <DrawerMenuItem icon="bell" title="Notificações" />
             </View>
 
@@ -320,7 +454,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  
+
   // -- Header Dinâmico --
   header: {
     flexDirection: 'row',
@@ -409,7 +543,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
-  // -- Quick Actions Menu --
+  // -- General Sections --
   sectionContainer: {
     marginBottom: 30,
   },
@@ -431,41 +565,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  menuScrollContent: {
-    paddingLeft: 20,
-    paddingRight: 10,
+
+  // -- Bento Grid Actions --
+  bentoContainer: {
+    paddingHorizontal: 20,
+    gap: 12,
   },
-  menuButton: {
-    // Aplicando a mesma lógica de Fake Glass nos cards do menu
-    backgroundColor: 'rgba(15, 15, 25, 0.85)',
+  bentoRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  bentoCardLargeWrapper: {
+    width: '100%',
+  },
+  bentoCardSmallWrapper: {
+    flex: 1,
+  },
+  bentoCard: {
+    backgroundColor: 'rgba(15, 15, 25, 0.75)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    width: 100,
-    height: 110,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    elevation: 5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 20,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    overflow: 'hidden',
   },
-  iconCircle: {
+  bentoCardLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+  },
+  bentoCardSmall: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    padding: 16,
+    height: 110,
+    justifyContent: 'space-between',
+  },
+  bentoIconContainer: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  menuTitle: {
-    color: '#E0E0E0',
+  bentoTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  bentoTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  bentoSubtitle: {
+    color: '#AAAAAA',
     fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
+    marginTop: 4,
+  },
+  bentoActionIcon: {
+    marginLeft: 10,
   },
 
   // -- Notices Preview --
@@ -576,8 +740,8 @@ const styles = StyleSheet.create({
   drawerMenuTitle: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
   },
   drawerDivider: {
     height: 1,
@@ -589,5 +753,52 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     paddingTop: 10,
+  },
+
+  // -- Explorar Mais Cards --
+  exploreHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  sectionTitleWithoutMargin: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  exploreSubtitle: {
+    color: '#AAAAAA',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  moreCard: {
+    backgroundColor: 'rgba(15, 15, 25, 0.90)', // Mais sólido e destacado
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 24,
+    width: width * 0.38, // Exato para cortar o terceiro card na tela, mostrando affordance de swipe
+    height: 145,
+    padding: 16,
+    marginRight: 12,
+    justifyContent: 'space-between',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  moreCardIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreCardTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: 'bold',
   }
 });

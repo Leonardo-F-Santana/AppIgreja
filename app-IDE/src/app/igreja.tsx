@@ -19,6 +19,7 @@ export default function IgrejaScreen() {
   const videoSource = require('../../assets/Img/IDEnacoes.mp4');
   const player = useVideoPlayer(videoSource, player => {
     player.loop = false;
+    player.muted = true;
     player.play();
   });
 
