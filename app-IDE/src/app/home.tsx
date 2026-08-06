@@ -13,10 +13,13 @@ import {
   Modal,
   Linking,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { signOut } from 'firebase/auth';
+import { auth } from '../config/firebase';
 import SocialFabMenu from '../components/SocialFabMenu';
 
 const { width } = Dimensions.get('window');
@@ -48,6 +51,16 @@ export default function HomeScreen() {
   // Controle do Drawer
   const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(width)).current;
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toggleProfileMenu(false); // Fechar o menu
+      router.replace('/'); // Voltar para a tela de autenticação
+    } catch (error) {
+      Alert.alert('Erro', 'Ocorreu um erro ao tentar sair.');
+    }
+  };
 
 
 
@@ -190,7 +203,7 @@ export default function HomeScreen() {
   };
 
   // Componente de Item de Lista para o Drawer
-  const DrawerMenuItem = ({ icon, title, family = 'Feather', isDestructive = false }) => {
+  const DrawerMenuItem = ({ icon, title, family = 'Feather', isDestructive = false, onPress }: any) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
 
     const onPressIn = () => {
@@ -202,7 +215,7 @@ export default function HomeScreen() {
     };
 
     return (
-      <Pressable onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Pressable onPressIn={onPressIn} onPressOut={onPressOut} onPress={onPress}>
         <Animated.View style={[styles.drawerMenuItem, { transform: [{ scale: scaleValue }] }]}>
           <View style={styles.drawerMenuIcon}>
             {renderIcon(family, icon, 20, isDestructive ? '#ef4444' : '#FFFFFF')}
@@ -416,7 +429,7 @@ export default function HomeScreen() {
 
             {/* Drawer Footer */}
             <View style={styles.drawerFooter}>
-              <DrawerMenuItem icon="log-out" title="Sair do aplicativo" isDestructive={true} />
+              <DrawerMenuItem icon="log-out" title="Sair do aplicativo" isDestructive={true} onPress={handleLogout} />
             </View>
           </Animated.View>
         </Animated.View>

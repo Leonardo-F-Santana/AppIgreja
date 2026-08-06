@@ -11,8 +11,14 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -33,6 +39,128 @@ export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [rememberMe, setRememberMe] = useState(false);
   const togglePosition = useSharedValue(0);
+
+  // Auth States
+  const [loginIdentifier, setLoginIdentifier] = useState(''); // Usado no login (pode ser email ou username)
+  const [email, setEmail] = useState(''); // Usado no cadastro
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Auth Functions
+  const handleLogin = async () => {
+    if (!loginIdentifier || !password) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      let finalEmail = loginIdentifier.trim().toLowerCase();
+
+      // Se não tem '@', assumimos que é um nome de usuário e buscamos no banco
+      if (!finalEmail.includes('@')) {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('username', '==', finalEmail));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          Alert.alert('Falha no Login', 'Usuário não encontrado.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Pega o e-mail real associado a esse username
+        finalEmail = querySnapshot.docs[0].data().email;
+      }
+
+      await signInWithEmailAndPassword(auth, finalEmail, password);
+      router.replace('/home');
+    } catch (error: any) {
+      let errorMessage = 'Ocorreu um erro ao fazer login.';
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        errorMessage = 'Credenciais incorretas.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'O identificador fornecido é inválido.';
+      }
+      Alert.alert('Falha no Login', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async () => {
+    if (!username || !email || !password || !confirmPassword) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Erro', 'As senhas não coincidem.');
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      Alert.alert('Senha Fraca', 'A senha deve conter ao menos 1 letra maiúscula, 1 minúscula, 1 caractere especial e ter no mínimo 6 caracteres.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Tentando criar usuário no Auth...');
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      const user = userCredential.user;
+      console.log('Usuário criado com sucesso no Auth! UID:', user.uid);
+
+      console.log('Tentando salvar no Firestore...');
+      // Envolve a chamada do Firestore em um Promise.race para evitar hang infinito (timeout de 8s)
+      const firestorePromise = setDoc(doc(db, 'users', user.uid), {
+        username: username.trim().toLowerCase(),
+        email: email.trim().toLowerCase(),
+        createdAt: new Date(),
+      });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('FIRESTORE_TIMEOUT')), 8000)
+      );
+
+      await Promise.race([firestorePromise, timeoutPromise]);
+      console.log('Salvo no Firestore com sucesso!');
+
+      // Desloga o usuário imediatamente para impedir o login automático
+      await signOut(auth);
+      console.log('SignOut concluído.');
+      
+      Alert.alert('Sucesso!', 'Sua conta foi criada. Por favor, faça login para entrar no aplicativo.');
+      
+      // Limpa os campos de senha
+      setPassword('');
+      setConfirmPassword('');
+      
+      // Muda para a aba de Login
+      handleToggle(true);
+    } catch (error: any) {
+      console.error('Erro no cadastro:', error);
+      let errorMessage = 'Ocorreu um erro ao criar a conta.';
+      
+      if (error.message === 'FIRESTORE_TIMEOUT') {
+        errorMessage = 'O banco de dados não respondeu. Verifique se você criou o Firestore Database no painel do Firebase.';
+      } else if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Este e-mail já está cadastrado.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'O e-mail fornecido é inválido.';
+      }
+      Alert.alert('Falha no Cadastro', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleToggle = (loginState: boolean) => {
     if (loginState === isLogin) return;
@@ -124,25 +252,41 @@ export default function AuthScreen() {
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Email"
+                    placeholder="Email ou Usuário"
                     placeholderTextColor="#888"
-                    keyboardType="email-address"
                     autoCapitalize="none"
+                    value={loginIdentifier}
+                    onChangeText={setLoginIdentifier}
                   />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Senha"
-                    placeholderTextColor="#888"
-                    secureTextEntry
-                  />
+                  <View style={{ position: 'relative' }}>
+                    <TextInput
+                      style={[styles.input, { paddingRight: 50 }]}
+                      placeholder="Senha"
+                      placeholderTextColor="#888"
+                      secureTextEntry={!showPassword}
+                      value={password}
+                      onChangeText={setPassword}
+                    />
+                    <TouchableOpacity 
+                      style={styles.eyeIcon} 
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#888" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <TouchableOpacity
                   style={styles.primaryButton}
                   activeOpacity={0.8}
-                  onPress={() => router.replace('/home')}
+                  onPress={handleLogin}
+                  disabled={isLoading}
                 >
-                  <Text style={styles.primaryButtonText}>Login</Text>
+                  {isLoading && isLogin ? (
+                    <ActivityIndicator color="#121212" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Login</Text>
+                  )}
                 </TouchableOpacity>
 
                 <View style={styles.rememberMeContainer}>
@@ -162,6 +306,8 @@ export default function AuthScreen() {
                     placeholder="Usuário"
                     placeholderTextColor="#888"
                     autoCapitalize="none"
+                    value={username}
+                    onChangeText={setUsername}
                   />
                   <TextInput
                     style={styles.input}
@@ -169,27 +315,57 @@ export default function AuthScreen() {
                     placeholderTextColor="#888"
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    value={email}
+                    onChangeText={setEmail}
                   />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Senha"
-                    placeholderTextColor="#888"
-                    secureTextEntry
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirmar Senha"
-                    placeholderTextColor="#888"
-                    secureTextEntry
-                  />
+                  <View style={{ position: 'relative' }}>
+                    <TextInput
+                      style={[styles.input, { paddingRight: 50 }]}
+                      placeholder="Senha"
+                      placeholderTextColor="#888"
+                      secureTextEntry={!showPassword}
+                      value={password}
+                      onChangeText={setPassword}
+                    />
+                    <TouchableOpacity 
+                      style={styles.eyeIcon} 
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#888" />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ position: 'relative' }}>
+                    <TextInput
+                      style={[styles.input, { paddingRight: 50 }]}
+                      placeholder="Confirmar Senha"
+                      placeholderTextColor="#888"
+                      secureTextEntry={!showConfirmPassword}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                    />
+                    <TouchableOpacity 
+                      style={styles.eyeIcon} 
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      <Feather name={showConfirmPassword ? 'eye' : 'eye-off'} size={20} color="#888" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.passwordHint}>
+                    A senha deve ter no mínimo 6 caracteres, contendo pelo menos 1 letra maiúscula, 1 minúscula e 1 caractere especial.
+                  </Text>
                 </View>
 
                 <TouchableOpacity
                   style={styles.primaryButton}
                   activeOpacity={0.8}
-                  onPress={() => router.replace('/home')}
+                  onPress={handleSignUp}
+                  disabled={isLoading}
                 >
-                  <Text style={styles.primaryButtonText}>Cadastrar</Text>
+                  {isLoading && !isLogin ? (
+                    <ActivityIndicator color="#121212" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Cadastrar</Text>
+                  )}
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -304,5 +480,20 @@ const styles = StyleSheet.create({
   rememberMeContainer: {
     marginTop: 20,
     alignItems: 'center',
+  },
+  passwordHint: {
+    color: '#888',
+    fontSize: 12,
+    marginTop: -5,
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    height: 50, // Match the height of the input exactly
+    justifyContent: 'center',
+    paddingHorizontal: 15,
   },
 });
