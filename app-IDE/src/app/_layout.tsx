@@ -74,6 +74,7 @@ export default function TabLayout() {
     <View style={{ flex: 1, backgroundColor: '#0F0F19' }}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="home" />
       </Stack>
 
       {!animationComplete && (
