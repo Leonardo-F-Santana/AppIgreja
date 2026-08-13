@@ -1,160 +1,331 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
-  Text,
   View,
   SafeAreaView,
   FlatList,
   TouchableOpacity,
   StatusBar,
+  ActivityIndicator,
   Linking,
   Alert,
+  ListRenderItemInfo,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  Timestamp,
+} from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { ThemedText } from '../components/themed-text';
 
-// Mock de Dados - Seguindo diretrizes LGPD (apenas primeiro nome e bairro, sem endereço exato)
-const cellsData = [
-  {
-    id: '1',
-    leaderName: 'Jeferson e Sheila',
-    neighborhood: 'Santa Margarida',
-    targetAudience: 'Casais',
-    dayTime: 'Terças às 19:30h',
-    leaderPhone: '5511999999999', // Fictício
-  },
-  {
-    id: '2',
-    leaderName: 'Gerson e Penélope',
-    neighborhood: 'Cosmos',
-    targetAudience: 'Casais',
-    dayTime: 'Terças às 19:30h',
-    leaderPhone: '5511999999999',
-  },
-  {
-    id: '3',
-    leaderName: 'Pedro',
-    neighborhood: 'Inhoaiba',
-    targetAudience: 'Jovens',
-    dayTime: 'Terças às 19:30h',
-    leaderPhone: '5511999999999',
-  },
-  {
-    id: '4',
-    leaderName: 'Lucas e Ana',
-    neighborhood: 'Paciência',
-    targetAudience: 'Misto',
-    dayTime: 'Terças às 19:30h',
-    leaderPhone: '5511999999999',
-  },
-  {
-    id: '5',
-    leaderName: 'Ana',
-    neighborhood: 'Cosmos',
-    targetAudience: 'Mulheres',
-    dayTime: 'Terças às 19:30h',
-    leaderPhone: '5511999999999',
-  },
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+interface Celula {
+  id: string;
+  nome: string;
+  lider: string;
+  diaSemana: string;
+  horario: string;
+  endereco: string;
+  bairro: string;
+  criadoEm: Timestamp | null;
+}
+
+// ─── Paleta de cores cíclica para os avatares ─────────────────────────────────
+
+const PALETA = [
+  { fundo: 'rgba(74, 222, 128, 0.15)',  borda: 'rgba(74, 222, 128, 0.35)',  texto: '#4ade80' },
+  { fundo: 'rgba(99, 179, 237, 0.15)',  borda: 'rgba(99, 179, 237, 0.35)',  texto: '#63b3ed' },
+  { fundo: 'rgba(197, 140, 255, 0.15)', borda: 'rgba(197, 140, 255, 0.35)', texto: '#c58cff' },
+  { fundo: 'rgba(251, 191, 36, 0.15)',  borda: 'rgba(251, 191, 36, 0.35)',  texto: '#fbbf24' },
+  { fundo: 'rgba(251, 113, 133, 0.15)', borda: 'rgba(251, 113, 133, 0.35)', texto: '#fb7185' },
+  { fundo: 'rgba(45, 212, 191, 0.15)',  borda: 'rgba(45, 212, 191, 0.35)',  texto: '#2dd4bf' },
 ];
 
-export default function CelulasScreen() {
-  const router = useRouter();
+function getCor(index: number) {
+  return PALETA[index % PALETA.length];
+}
 
-  const handleJoinCell = async (cell) => {
-    const text = `Olá! Gostaria de participar da célula em ${cell.neighborhood}.`;
-    const url = `whatsapp://send?phone=${cell.leaderPhone}&text=${encodeURIComponent(text)}`;
+/** Extrai as iniciais de até 2 palavras do nome da célula */
+function getIniciais(nome: string): string {
+  return nome
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('');
+}
 
-    try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-      } else {
-        // Fallback caso não tenha WhatsApp instalado
-        Alert.alert(
-          'WhatsApp não encontrado',
-          'Não foi possível abrir o WhatsApp. Verifique se o aplicativo está instalado.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.log('Erro ao tentar abrir WhatsApp:', error);
-    }
+// ─── Componente: Card de Célula ───────────────────────────────────────────────
+
+interface CelulaCardProps {
+  celula: Celula;
+  corIndex: number;
+}
+
+function CelulaCard({ celula, corIndex }: CelulaCardProps) {
+  const cor = getCor(corIndex);
+  const iniciais = getIniciais(celula.nome);
+
+  const handleWhatsApp = () => {
+    // TODO: Adicionar número de telefone do líder ao documento Firestore
+    Alert.alert(
+      'Contactar Célula',
+      `Para participar da ${celula.nome}, contacte o líder ${celula.lider} diretamente.`,
+      [{ text: 'OK' }]
+    );
   };
 
-  const renderCellCard = ({ item }) => (
+  const handleVerMapa = () => {
+    const endereco = encodeURIComponent(
+      `${celula.endereco || celula.bairro}`
+    );
+    const url = `https://www.google.com/maps/search/?api=1&query=${endereco}`;
+    Linking.openURL(url).catch(() =>
+      Alert.alert('Erro', 'Não foi possível abrir o mapa.')
+    );
+  };
+
+  return (
     <View style={styles.card}>
-      <View style={styles.cardRow}>
-        {/* Esquerda: Foto do Líder (Placeholder) */}
-        <View style={styles.avatarContainer}>
-          <FontAwesome5 name="user-circle" size={38} color="#A0AEC0" solid />
+      {/* Cabeçalho: Avatar + Nome + Bairro */}
+      <View style={styles.cardHeader}>
+        {/* Avatar com iniciais colorido */}
+        <View
+          style={[
+            styles.avatar,
+            { backgroundColor: cor.fundo, borderColor: cor.borda },
+          ]}
+        >
+          <ThemedText style={[styles.avatarText, { color: cor.texto }]}>
+            {iniciais}
+          </ThemedText>
         </View>
 
-        {/* Centro: Informações */}
-        <View style={styles.infoContainer}>
-          <Text style={styles.leaderName}>{item.leaderName}</Text>
-
-          <View style={styles.infoRow}>
-            <Feather name="map-pin" size={12} color="#A0AEC0" />
-            <Text style={styles.infoText}>{item.neighborhood}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Feather name="users" size={12} color="#A0AEC0" />
-            <Text style={styles.infoText}>{item.targetAudience}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Feather name="clock" size={12} color="#A0AEC0" />
-            <Text style={styles.infoText}>{item.dayTime}</Text>
+        <View style={styles.headerInfo}>
+          <ThemedText style={styles.nomeCelula} numberOfLines={1}>
+            {celula.nome}
+          </ThemedText>
+          {/* Badge de bairro */}
+          <View
+            style={[
+              styles.bairroBadge,
+              { backgroundColor: cor.fundo, borderColor: cor.borda },
+            ]}
+          >
+            <Ionicons name="location-outline" size={11} color={cor.texto} />
+            <ThemedText style={[styles.bairroText, { color: cor.texto }]}>
+              {celula.bairro}
+            </ThemedText>
           </View>
         </View>
       </View>
 
-      {/* Rodapé/Direita: Botão de Participar */}
-      <TouchableOpacity
-        style={styles.joinButton}
-        onPress={() => handleJoinCell(item)}
-      >
-        <FontAwesome5 name="whatsapp" size={18} color="#25D366" />
-        <Text style={styles.joinButtonText}>Participar</Text>
-      </TouchableOpacity>
+      {/* Separador */}
+      <View style={styles.separator} />
+
+      {/* Linhas de detalhes */}
+      <View style={styles.detalhes}>
+        {/* Líder */}
+        <View style={styles.detalheRow}>
+          <View style={styles.iconWrapper}>
+            <FontAwesome5 name="user" size={12} color="#718096" />
+          </View>
+          <ThemedText style={styles.detalheLabel}>Líder: </ThemedText>
+          <ThemedText style={styles.detalheValor} numberOfLines={1}>
+            {celula.lider}
+          </ThemedText>
+        </View>
+
+        {/* Dia e Horário */}
+        <View style={styles.detalheRow}>
+          <View style={styles.iconWrapper}>
+            <Feather name="clock" size={12} color="#718096" />
+          </View>
+          <ThemedText style={styles.detalheLabel}>Horário: </ThemedText>
+          <ThemedText style={styles.detalheValor}>
+            {celula.diaSemana} às {celula.horario}
+          </ThemedText>
+        </View>
+
+        {/* Endereço */}
+        {celula.endereco ? (
+          <View style={styles.detalheRow}>
+            <View style={styles.iconWrapper}>
+              <Ionicons name="location-outline" size={13} color="#718096" />
+            </View>
+            <ThemedText style={styles.detalheValor} numberOfLines={2}>
+              {celula.endereco}
+            </ThemedText>
+          </View>
+        ) : null}
+      </View>
+
+      {/* Rodapé: botões de ação */}
+      <View style={styles.cardFooter}>
+        <TouchableOpacity
+          style={styles.btnSecundario}
+          onPress={handleVerMapa}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="map-outline" size={15} color="#A0AEC0" />
+          <ThemedText style={styles.btnSecundarioText}>Ver no Mapa</ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.btnParticipar}
+          onPress={handleWhatsApp}
+          activeOpacity={0.8}
+        >
+          <FontAwesome5 name="whatsapp" size={16} color="#25D366" />
+          <ThemedText style={styles.btnParticiparText}>Participar</ThemedText>
+        </TouchableOpacity>
+      </View>
     </View>
   );
+}
+
+// ─── Componente: Estado Vazio ─────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconWrapper}>
+        <Feather name="users" size={36} color="#4A5568" />
+      </View>
+      <ThemedText style={styles.emptyTitle}>
+        Nenhuma célula registada
+      </ThemedText>
+      <ThemedText style={styles.emptySubtitle}>
+        Ainda não existem células registadas.{'\n'}Volte mais tarde para conferir!
+      </ThemedText>
+    </View>
+  );
+}
+
+// ─── Ecrã Principal ───────────────────────────────────────────────────────────
+
+export default function CelulasScreen() {
+  const router = useRouter();
+  const [celulas, setCelulas] = useState<Celula[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── Subscrição em tempo real ao Firestore ──
+  useEffect(() => {
+    let q;
+    try {
+      q = query(
+        collection(db, 'celulas'),
+        orderBy('nome', 'asc')
+      );
+    } catch (err) {
+      console.error('[CelulasScreen] Erro ao construir query:', err);
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const dados: Celula[] = snapshot.docs.map((doc) => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            nome: d.nome ?? '',
+            lider: d.lider ?? '',
+            diaSemana: d.diaSemana ?? '',
+            horario: d.horario ?? '',
+            endereco: d.endereco ?? '',
+            bairro: d.bairro ?? '',
+            criadoEm: d.criadoEm ?? null,
+          };
+        });
+        setCelulas(dados);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('[CelulasScreen] Erro ao escutar células:', error.message);
+        Alert.alert(
+          'Erro de ligação',
+          'Não foi possível carregar as células. Verifique a sua ligação à internet.',
+          [{ text: 'OK' }]
+        );
+        setLoading(false);
+      }
+    );
+
+    // Cleanup: cancela subscrição ao desmontar
+    return () => unsubscribe();
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<Celula>) => (
+      <CelulaCard celula={item} corIndex={index} />
+    ),
+    []
+  );
+
+  const keyExtractor = useCallback((item: Celula) => item.id, []);
 
   return (
-    <LinearGradient
-      colors={['#0a0a1a', '#050B14']}
-      style={styles.container}
-    >
+    <LinearGradient colors={['#0a0a1a', '#050B14']} style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
             <Feather name="arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Células</Text>
-          <View style={{ width: 34 }} />
+          <ThemedText style={styles.headerTitle}>Células</ThemedText>
+          {/* Indicador de tempo real */}
+          <View style={styles.liveWrapper}>
+            <View style={styles.liveDot} />
+          </View>
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.pageSubtitle}>
+          <ThemedText style={styles.pageSubtitle}>
             Encontre uma célula perto de você e faça parte da nossa família.
-          </Text>
+          </ThemedText>
 
-          <FlatList
-            data={cellsData}
-            keyExtractor={(item) => item.id}
-            renderItem={renderCellCard}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
-          />
+          {/* Estado de carregamento */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#4ade80" />
+              <ThemedText style={styles.loadingText}>
+                Carregando células...
+              </ThemedText>
+            </View>
+          ) : (
+            <FlatList<Celula>
+              data={celulas}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.listContainer,
+                celulas.length === 0 && styles.listContainerEmpty,
+              ]}
+              ListEmptyComponent={<EmptyState />}
+            />
+          )}
         </View>
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
+// ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -164,6 +335,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 20,
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -173,7 +346,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 5,
-    width: 34,
+    width: 40,
     alignItems: 'flex-start',
   },
   headerTitle: {
@@ -181,6 +354,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  liveWrapper: {
+    width: 40,
+    alignItems: 'flex-end',
+    paddingRight: 4,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ade80',
+  },
+
+  // Conteúdo
   content: {
     flex: 1,
     paddingHorizontal: 20,
@@ -192,66 +378,197 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center',
   },
-  listContainer: {
-    paddingBottom: 40,
+
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
+  loadingText: {
+    color: '#555555',
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+
+  // Lista
+  listContainer: {
+    paddingBottom: 100,
+  },
+  listContainerEmpty: {
+    flexGrow: 1,
+  },
+
+  // Empty state
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 40,
+  },
+  emptyIconWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    color: '#E2E8F0',
+    fontSize: 17,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    color: '#555555',
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+
+  // Card
   card: {
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 18,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.09)',
+    overflow: 'hidden',
   },
-  cardRow: {
+
+  // Cabeçalho do card
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    padding: 16,
+    paddingBottom: 14,
+    gap: 14,
   },
-  avatarContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    justifyContent: 'center',
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
     alignItems: 'center',
-    marginRight: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  infoContainer: {
+  avatarText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  headerInfo: {
     flex: 1,
+    gap: 6,
   },
-  leaderName: {
+  nomeCelula: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: 'bold',
-    marginBottom: 8,
+    lineHeight: 22,
   },
-  infoRow: {
+  bairroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 4,
   },
-  infoText: {
+  bairroText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.3,
+  },
+
+  // Separador
+  separator: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginHorizontal: 16,
+  },
+
+  // Detalhes
+  detalhes: {
+    padding: 16,
+    paddingTop: 14,
+    gap: 8,
+  },
+  detalheRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  iconWrapper: {
+    width: 20,
+    alignItems: 'center',
+    paddingTop: 1,
+  },
+  detalheLabel: {
     color: '#A0AEC0',
     fontSize: 13,
-    marginLeft: 8,
+    fontWeight: '600',
   },
-  joinButton: {
+  detalheValor: {
+    flex: 1,
+    color: '#CBD5E0',
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+
+  // Rodapé do card
+  cardFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  btnSecundario: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  btnSecundarioText: {
+    color: '#A0AEC0',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  btnParticipar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 10,
+    borderRadius: 12,
     backgroundColor: 'rgba(37, 211, 102, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(37, 211, 102, 0.3)',
-    borderRadius: 12,
-    paddingVertical: 12,
   },
-  joinButtonText: {
+  btnParticiparText: {
     color: '#25D366',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: 'bold',
-    marginLeft: 8,
   },
 });
