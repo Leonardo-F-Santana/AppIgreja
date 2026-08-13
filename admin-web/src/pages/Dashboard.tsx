@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ArrowRight, X, Bell, AlertTriangle } from 'lucide-react';
-import { criarAviso, ouvirAvisos, type Aviso, type Prioridade } from '../services/avisosService';
+import { criarAviso, type Prioridade } from '../services/avisosService';
+import { ouvirResumoDashboard, type DashboardResumo } from '../services/dashboardService';
+import { Timestamp } from 'firebase/firestore';
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
@@ -54,7 +56,6 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
-        {/* Header do modal */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-100 p-2.5 rounded-xl">
@@ -65,21 +66,14 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
               <p className="text-gray-400 text-xs font-medium mt-0.5">Será enviado a todos os membros</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-          >
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        {/* Formulário */}
         <form onSubmit={handleSubmit} className="px-8 py-6 flex flex-col gap-5">
-          {/* Título */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              Título do Aviso
-            </label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Título do Aviso</label>
             <input
               type="text"
               value={titulo}
@@ -91,11 +85,8 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
             />
           </div>
 
-          {/* Mensagem */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              Conteúdo / Mensagem
-            </label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Conteúdo / Mensagem</label>
             <textarea
               value={mensagem}
               onChange={(e) => setMensagem(e.target.value)}
@@ -108,44 +99,30 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
             <p className="text-xs text-gray-400 text-right">{mensagem.length}/500</p>
           </div>
 
-          {/* Prioridade */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              Prioridade
-            </label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Prioridade</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setPrioridade('normal')}
                 className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition-all
-                  ${prioridade === 'normal'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                    : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
+                  ${prioridade === 'normal' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                Normal
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Normal
               </button>
               <button
                 type="button"
                 onClick={() => setPrioridade('alta')}
                 className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition-all
-                  ${prioridade === 'alta'
-                    ? 'border-red-500 bg-red-50 text-red-700'
-                    : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
+                  ${prioridade === 'alta' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
               >
-                <AlertTriangle size={14} />
-                Urgente
+                <AlertTriangle size={14} /> Urgente
               </button>
             </div>
           </div>
 
-          {/* Ações */}
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
-            >
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors">
               Cancelar
             </button>
             <button
@@ -153,17 +130,7 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
               disabled={isLoading || !titulo.trim() || !mensagem.trim()}
               className="flex-1 py-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                  </svg>
-                  Publicando...
-                </>
-              ) : (
-                'Publicar Aviso'
-              )}
+              {isLoading ? 'Publicando...' : 'Publicar Aviso'}
             </button>
           </div>
         </form>
@@ -172,18 +139,32 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
   );
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatEventDate(d: any) {
+  const date = d instanceof Timestamp ? d.toDate() : new Date(d);
+  const month = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+  const day = date.getDate().toString().padStart(2, '0');
+  
+  const weekDayRaw = date.toLocaleDateString('pt-BR', { weekday: 'long' });
+  const weekDay = weekDayRaw.charAt(0).toUpperCase() + weekDayRaw.slice(1).split('-')[0]; // ex: Domingo, Terça
+  
+  const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return { month, day, weekDay, time };
+}
+
 // ─── Dashboard Principal ──────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'erro' } | null>(null);
-  const [ultimosAvisos, setUltimosAvisos] = useState<Aviso[]>([]);
+  
+  const [resumo, setResumo] = useState<DashboardResumo | null>(null);
 
-  // Escuta os últimos avisos em tempo real para o feed de "Últimas Atividades"
   useEffect(() => {
-    const unsubscribe = ouvirAvisos((avisos) => {
-      setUltimosAvisos(avisos.slice(0, 3));
+    const unsubscribe = ouvirResumoDashboard((dados) => {
+      setResumo(dados);
     });
     return () => unsubscribe();
   }, []);
@@ -202,24 +183,14 @@ export default function Dashboard() {
     }
   };
 
+  const isDataLoading = resumo === null;
+
   return (
     <>
-      {/* Toast de feedback */}
-      {toast && (
-        <Toast
-          mensagem={toast.mensagem}
-          tipo={toast.tipo}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={() => setToast(null)} />}
 
-      {/* Modal de publicar aviso */}
       {isModalOpen && (
-        <ModalAviso
-          onClose={() => setIsModalOpen(false)}
-          onPublicar={handlePublicar}
-          isLoading={isLoading}
-        />
+        <ModalAviso onClose={() => setIsModalOpen(false)} onPublicar={handlePublicar} isLoading={isLoading} />
       )}
 
       <div className="flex flex-col gap-8 max-w-[1400px] mx-auto pb-10">
@@ -241,12 +212,14 @@ export default function Dashboard() {
 
         {/* 2. Linha 1 - Métricas Rápidas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Card 1 */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          {/* Card 1: Membros Ativos */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
             <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Membros Ativos</h3>
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-3xl font-bold text-gray-900">432</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {isDataLoading ? '...' : resumo.totalMembros}
+                </p>
                 <p className="text-xs font-bold text-emerald-600 mt-2 bg-emerald-50 w-max px-2.5 py-1 rounded-full">+12%</p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
@@ -258,8 +231,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Card 2 */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          {/* Card 2: Dízimos (Estático) */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
             <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Dízimos &amp; Ofertas</h3>
             <div className="flex justify-between items-end">
               <div>
@@ -275,13 +248,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Card 3 */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          {/* Card 3: Pedidos de Oração */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
             <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Pedidos de Oração</h3>
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-3xl font-bold text-gray-900">28</p>
-                <p className="text-xs font-bold text-orange-600 mt-2 bg-orange-50 w-max px-2.5 py-1 rounded-full">4 urgentes</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {isDataLoading ? '...' : resumo.totalPedidos}
+                </p>
+                <p className="text-xs font-bold text-orange-600 mt-2 bg-orange-50 w-max px-2.5 py-1 rounded-full">
+                  {isDataLoading ? '-' : resumo.pedidosUrgentes} pendentes
+                </p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
                  <div className="w-1.5 bg-orange-400 rounded-t-sm h-[60%]"></div>
@@ -292,13 +269,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Card 4 */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          {/* Card 4: Eventos Mês */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
             <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Eventos Mês</h3>
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-3xl font-bold text-gray-900">14</p>
-                <p className="text-xs font-bold text-blue-600 mt-2 bg-blue-50 w-max px-2.5 py-1 rounded-full">2 próximos</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {isDataLoading ? '...' : resumo.totalEventos}
+                </p>
+                <p className="text-xs font-bold text-blue-600 mt-2 bg-blue-50 w-max px-2.5 py-1 rounded-full">
+                  {isDataLoading ? '-' : resumo.proximosEventos.length} próximos
+                </p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
                  <div className="w-1.5 bg-gray-200 rounded-t-sm h-[100%]"></div>
@@ -316,46 +297,37 @@ export default function Dashboard() {
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col h-full min-h-[300px]">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-gray-900 text-sm font-bold">Próximas Atividades</h3>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Nesta Semana</span>
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Breve</span>
             </div>
             <div className="flex-1 flex flex-col gap-4">
-              <div className="flex items-center gap-4">
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 w-12 flex flex-col items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Ago</span>
-                  <span className="text-sm font-black text-emerald-600">24</span>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900 leading-tight">Culto de Celebração</p>
-                  <p className="text-xs font-medium text-gray-500 mt-0.5">Domingo, 19:00 - Templo</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 w-12 flex flex-col items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Ago</span>
-                  <span className="text-sm font-black text-emerald-600">26</span>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900 leading-tight">Reunião de Liderança</p>
-                  <p className="text-xs font-medium text-gray-500 mt-0.5">Terça, 20:00 - Sala 2</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 w-12 flex flex-col items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Ago</span>
-                  <span className="text-sm font-black text-emerald-600">28</span>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900 leading-tight">Culto Jovem</p>
-                  <p className="text-xs font-medium text-gray-500 mt-0.5">Quinta, 19:30 - Templo</p>
-                </div>
-              </div>
+              {isDataLoading ? (
+                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">Carregando eventos...</p></div>
+              ) : resumo.proximosEventos.length === 0 ? (
+                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">Nenhum evento futuro encontrado.</p></div>
+              ) : (
+                resumo.proximosEventos.map(evento => {
+                  const dataFormatada = formatEventDate(evento.data);
+                  return (
+                    <div key={evento.id} className="flex items-center gap-4">
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 w-12 flex flex-col items-center justify-center flex-shrink-0">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">{dataFormatada.month}</span>
+                        <span className="text-sm font-black text-emerald-600">{dataFormatada.day}</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900 leading-tight line-clamp-1">{evento.titulo}</p>
+                        <p className="text-xs font-medium text-gray-500 mt-0.5">{dataFormatada.weekDay}, {dataFormatada.time} - {evento.local}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
             <button className="w-full mt-4 py-2.5 rounded-xl border border-gray-100 text-gray-900 font-bold text-xs hover:bg-gray-50 transition-colors">
               Ver Calendário
             </button>
           </div>
 
-          {/* Card Central: Frequência */}
+          {/* Card Central: Frequência (Estático) */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between">
             <h3 className="text-gray-900 text-sm font-bold mb-4">Frequência nos Cultos</h3>
             <div className="text-center my-4">
@@ -386,8 +358,8 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Card Direito: Últimas Atividades (feed em tempo real) */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col h-full">
+          {/* Card Direito: Últimas Atividades (Avisos) */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col h-full min-h-[300px]">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-gray-900 text-sm font-bold">Últimos Avisos</h3>
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
@@ -395,17 +367,19 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="flex-1 flex flex-col gap-4 justify-start">
-              {ultimosAvisos.length === 0 ? (
+              {isDataLoading ? (
+                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">Carregando...</p></div>
+              ) : resumo.ultimosAvisos.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
                   <Bell size={28} className="text-gray-200 mb-2" />
                   <p className="text-xs text-gray-400 font-medium">Nenhum aviso publicado ainda.</p>
                 </div>
               ) : (
-                ultimosAvisos.map((aviso) => (
+                resumo.ultimosAvisos.map((aviso) => (
                   <div key={aviso.id} className="flex gap-3">
                     <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${aviso.prioridade === 'alta' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
                     <div>
-                      <p className="text-sm font-bold text-gray-900 leading-tight">{aviso.titulo}</p>
+                      <p className="text-sm font-bold text-gray-900 leading-tight line-clamp-1">{aviso.titulo}</p>
                       <p className="text-xs font-medium text-gray-500 mt-0.5 line-clamp-1">{aviso.mensagem}</p>
                     </div>
                   </div>
@@ -417,7 +391,7 @@ export default function Dashboard() {
 
         {/* 4. Linha 3 - Status e Banners */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Barras Horizontais: Células */}
+          {/* Barras Horizontais: Células (Estático) */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-center min-h-[180px]">
             <h3 className="text-gray-900 text-sm font-bold mb-6">Status de Células</h3>
             <div className="space-y-6">

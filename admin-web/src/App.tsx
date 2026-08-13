@@ -6,7 +6,9 @@ import Avisos from './pages/Avisos';
 import EventosPage from './pages/EventosPage';
 import CelulasPage from './pages/CelulasPage';
 import DoacoesPage from './pages/DoacoesPage';
+import PedidosPage from './pages/PedidosPage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
+import MembrosPage from './pages/MembrosPage';
 
 function App() {
   return (
@@ -22,10 +24,9 @@ function App() {
           <Route path="eventos" element={<EventosPage />} />
           <Route path="celulas" element={<CelulasPage />} />
           <Route path="doacoes" element={<DoacoesPage />} />
+          <Route path="pedidos" element={<PedidosPage />} />
           <Route path="configuracoes" element={<ConfiguracoesPage />} />
-          {/* Rotas legadas mantidas para não quebrar links existentes */}
-          <Route path="membros" element={<Navigate to="/dashboard" replace />} />
-          <Route path="pedidos" element={<Navigate to="/dashboard" replace />} />
+          <Route path="membros" element={<MembrosPage />} />
         </Route>
       </Routes>
     </Router>

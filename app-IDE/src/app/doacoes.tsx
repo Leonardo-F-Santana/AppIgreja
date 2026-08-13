@@ -1,58 +1,125 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
-  Text,
   View,
   SafeAreaView,
   TouchableOpacity,
   StatusBar,
-  ScrollView,
   Alert,
   ActivityIndicator,
+  FlatList,
+  Text,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { ThemedView } from '../components/themed-view';
+import { ThemedText } from '../components/themed-text';
+
+interface Doacao {
+  id: string;
+  titulo: string;
+  descricao: string;
+  tipo: string;
+  chaveOuConta: string;
+  ativo: boolean;
+  criadoEm: any;
+}
 
 export default function DoacoesScreen() {
   const router = useRouter();
 
-  const [receipt, setReceipt] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [doacoes, setDoacoes] = useState<Doacao[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const pixKey = '12.345.678/0001-90';
+  useEffect(() => {
+    const q = query(
+      collection(db, 'doacoes'),
+      where('ativo', '==', true)
+    );
 
-  const handleCopyPix = async () => {
-    try {
-      Alert.alert('Sucesso', 'Chave PIX copiada com sucesso!');
-    } catch (error) {
-      // Simulação caso a API nativa falhe
-      Alert.alert('Sucesso', 'Chave PIX copiada com sucesso! (Simulado)');
-    }
-  };
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const lista: Doacao[] = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      } as Doacao));
+      
+      setDoacoes(lista);
+      setLoading(false);
+    }, (error) => {
+      console.error('Erro ao buscar doações:', error);
+      Alert.alert('Erro', 'Não foi possível carregar as campanhas de doação.');
+      setLoading(false);
+    });
 
-  const handlePickReceipt = async () => {
-    try {
-      // Simulação pura devido a ausência dos pacotes ImagePicker localmente.
-      setReceipt('simulated_receipt.jpg');
-    } catch (error) {
-      console.log('Erro ao abrir galeria:', error);
-      // Fallback para simulação
-      setReceipt('simulated_receipt.jpg');
-    }
-  };
+    return () => unsubscribe();
+  }, []);
 
-  const handleSendReceipt = () => {
-    if (!receipt) return;
-
-    setIsUploading(true);
-
-    // Simula o tempo de upload de 2 segundos
+  const copiarChave = async (id: string, chave: string) => {
+    await Clipboard.setStringAsync(chave);
+    setCopiedId(id);
+    
+    // Mostra um toast nativo via Alert (simples) e volta o botão ao normal após 2 segundos
     setTimeout(() => {
-      setIsUploading(false);
-      setReceipt(null);
-      Alert.alert('Muito Obrigado!', 'Seu comprovante foi enviado com sucesso. Deus abençoe sua generosidade!');
+      setCopiedId(null);
     }, 2000);
+  };
+
+  const renderItem = ({ item }: { item: Doacao }) => {
+    const isCopied = copiedId === item.id;
+    const isPix = item.tipo.toUpperCase().includes('PIX');
+
+    return (
+      <ThemedView style={styles.card}>
+        <View style={styles.cardHeader}>
+          <ThemedText style={styles.cardTitle} type="title" numberOfLines={2}>
+            {item.titulo}
+          </ThemedText>
+          <View style={[styles.badge, isPix ? styles.badgePix : styles.badgeBank]}>
+            <Ionicons 
+              name={isPix ? 'qr-code-outline' : 'business-outline'} 
+              size={14} 
+              color={isPix ? '#047857' : '#1d4ed8'} 
+            />
+            <Text style={[styles.badgeText, isPix ? styles.badgeTextPix : styles.badgeTextBank]}>
+              {isPix ? 'PIX' : 'BANCO'}
+            </Text>
+          </View>
+        </View>
+        
+        {item.descricao ? (
+          <ThemedText style={styles.cardDescription}>{item.descricao}</ThemedText>
+        ) : null}
+
+        <View style={styles.keyContainer}>
+          <ThemedText style={styles.keyLabel}>
+            {isPix ? 'CHAVE PIX' : 'DADOS BANCÁRIOS'}
+          </ThemedText>
+          <Text style={styles.keyValue} selectable={true}>
+            {item.chaveOuConta}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.copyButton, isCopied && styles.copyButtonCopied]}
+          onPress={() => copiarChave(item.id, item.chaveOuConta)}
+          activeOpacity={0.8}
+        >
+          <Ionicons 
+            name={isCopied ? "checkmark-circle" : "copy-outline"} 
+            size={20} 
+            color="#0a0a1a" 
+          />
+          <Text style={styles.copyButtonText}>
+            {isCopied ? 'Copiado!' : 'Copiar Chave'}
+          </Text>
+        </TouchableOpacity>
+      </ThemedView>
+    );
   };
 
   return (
@@ -68,111 +135,35 @@ export default function DoacoesScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Feather name="arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Doações</Text>
+          <ThemedText style={styles.headerTitle}>Dízimos e Ofertas</ThemedText>
           <View style={{ width: 34 }} />
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        <ThemedText style={styles.pageDescription}>
+          "Cada um dê conforme determinou em seu coração, não com pesar ou por obrigação, pois Deus ama quem dá com alegria." - 2 Coríntios 9:7
+        </ThemedText>
 
-          <Text style={styles.pageDescription}>
-            "Cada um dê conforme determinou em seu coração, não com pesar ou por obrigação, pois Deus ama quem dá com alegria." - 2 Coríntios 9:7
-          </Text>
-
-          {/* Seção PIX */}
-          <View style={styles.card}>
-            <View style={styles.qrCodeContainer}>
-              <Ionicons name="qr-code-outline" size={100} color="#FFFFFF" />
-            </View>
-
-            <View style={styles.pixKeyContainer}>
-              <Text style={styles.pixKeyLabel}>Chave PIX (CNPJ)</Text>
-              <Text style={styles.pixKeyValue}>{pixKey}</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.copyButton}
-              onPress={handleCopyPix}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="copy-outline" size={20} color="#0a0a1a" />
-              <Text style={styles.copyButtonText}>Copiar Chave PIX</Text>
-            </TouchableOpacity>
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#4ade80" />
+            <ThemedText style={styles.loadingText}>Carregando campanhas...</ThemedText>
           </View>
-
-          {/* Seção Dados Bancários */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Dados Bancários</Text>
-
-            <View style={styles.bankInfoRow}>
-              <Text style={styles.bankInfoLabel}>Banco:</Text>
-              <Text style={styles.bankInfoValue}>Banco Itau (999)</Text>
-            </View>
-            <View style={styles.bankInfoRow}>
-              <Text style={styles.bankInfoLabel}>Agência:</Text>
-              <Text style={styles.bankInfoValue}>0001</Text>
-            </View>
-            <View style={styles.bankInfoRow}>
-              <Text style={styles.bankInfoLabel}>Conta Corrente:</Text>
-              <Text style={styles.bankInfoValue}>12345-6</Text>
-            </View>
-            <View style={styles.bankInfoRow}>
-              <Text style={styles.bankInfoLabel}>Titular:</Text>
-              <Text style={styles.bankInfoValue}>Ministério IDE</Text>
-            </View>
+        ) : doacoes.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Ionicons name="wallet-outline" size={64} color="rgba(255,255,255,0.2)" />
+            <ThemedText style={styles.emptyText}>
+              Nenhuma campanha de arrecadação ativa de momento.
+            </ThemedText>
           </View>
-
-          {/* Seção Envio de Comprovante */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Comprovante</Text>
-            <Text style={styles.receiptDescription}>
-              Fez sua doação? Envie o comprovante (opcional).
-            </Text>
-
-            {!receipt ? (
-              <TouchableOpacity
-                style={styles.attachButton}
-                onPress={handlePickReceipt}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="attach-outline" size={22} color="#FFFFFF" />
-                <Text style={styles.attachButtonText}>Anexar Comprovante</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.receiptAttachedContainer}>
-                <View style={styles.receiptInfoRow}>
-                  <Feather name="image" size={20} color="#4ade80" />
-                  <Text style={styles.receiptAttachedText}>Comprovante anexado</Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.sendButton, isUploading && styles.sendButtonDisabled]}
-                  onPress={handleSendReceipt}
-                  activeOpacity={0.8}
-                  disabled={isUploading}
-                >
-                  {isUploading ? (
-                    <ActivityIndicator size="small" color="#0a0a1a" />
-                  ) : (
-                    <>
-                      <Feather name="send" size={18} color="#0a0a1a" />
-                      <Text style={styles.sendButtonText}>Enviar Agora</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                {!isUploading && (
-                  <TouchableOpacity onPress={() => setReceipt(null)} style={styles.removeReceiptButton}>
-                    <Text style={styles.removeReceiptText}>Remover / Escolher outro</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-
-        </ScrollView>
+        ) : (
+          <FlatList
+            data={doacoes}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -199,161 +190,139 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerTitle: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
   },
   pageDescription: {
     color: '#A0AEC0',
     fontSize: 14,
     lineHeight: 22,
     textAlign: 'center',
+    marginHorizontal: 20,
     marginBottom: 24,
     fontStyle: 'italic',
   },
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  qrCodeContainer: {
+  centerContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    padding: 20,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingHorizontal: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    color: '#A0AEC0',
+    fontSize: 16,
+  },
+  emptyText: {
+    marginTop: 16,
+    color: '#A0AEC0',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    gap: 12,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    flex: 1,
+    lineHeight: 28,
+    color: '#F1F5F9', // Cinza quase branco
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  badgePix: {
+    backgroundColor: '#d1fae5',
+  },
+  badgeBank: {
+    backgroundColor: '#dbeafe',
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  badgeTextPix: {
+    color: '#047857',
+  },
+  badgeTextBank: {
+    color: '#1d4ed8',
+  },
+  cardDescription: {
+    color: '#94a3b8',
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  keyContainer: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
-    borderStyle: 'dashed',
-  },
-  pixKeyContainer: {
     alignItems: 'center',
-    marginBottom: 24,
   },
-  pixKeyLabel: {
-    color: '#A0AEC0',
-    fontSize: 13,
-    marginBottom: 4,
+  keyLabel: {
+    color: '#4ade80',
+    fontSize: 11,
+    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  pixKeyValue: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: 'bold',
     letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  keyValue: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    fontFamily: 'monospace',
+    textAlign: 'center',
   },
   copyButton: {
     backgroundColor: '#4ade80',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 12,
+    width: '100%',
+  },
+  copyButtonCopied: {
+    backgroundColor: '#60a5fa',
   },
   copyButtonText: {
     color: '#0a0a1a',
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
-  },
-  cardTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  bankInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  bankInfoLabel: {
-    color: '#A0AEC0',
-    fontSize: 15,
-  },
-  bankInfoValue: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  receiptDescription: {
-    color: '#A0AEC0',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  attachButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  attachButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  receiptAttachedContainer: {
-    marginTop: 8,
-  },
-  receiptInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.2)',
-  },
-  receiptAttachedText: {
-    color: '#4ade80',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  sendButton: {
-    backgroundColor: '#4ade80',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  sendButtonDisabled: {
-    opacity: 0.7,
-  },
-  sendButtonText: {
-    color: '#0a0a1a',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  removeReceiptButton: {
-    alignItems: 'center',
-    marginTop: 16,
-    paddingVertical: 8,
-  },
-  removeReceiptText: {
-    color: '#A0AEC0',
-    fontSize: 13,
-    textDecorationLine: 'underline',
   },
 });
