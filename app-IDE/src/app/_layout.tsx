@@ -2,6 +2,10 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '../config/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 
 // Impede que a splash screen nativa suma automaticamente
 SplashScreen.preventAutoHideAsync();
@@ -14,11 +18,37 @@ export default function TabLayout() {
   const opacity = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(1)).current;
 
+  const router = useRouter();
+
   useEffect(() => {
     async function prepare() {
       try {
-        // Simula o tempo de carregamento de fontes/dados
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Aguarda a verificação de autenticação e estado do AsyncStorage
+        await new Promise<void>((resolve) => {
+          const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            unsubscribe(); // Só queremos checar uma vez no início
+
+            if (user) {
+              try {
+                const rememberMe = await AsyncStorage.getItem('@lembrar_me_status');
+                if (rememberMe === 'false') {
+                  // O utilizador escolheu não ser lembrado
+                  await signOut(auth);
+                  // Continua na tela de login
+                } else {
+                  // O utilizador escolheu ser lembrado (ou é undefined)
+                  router.replace('/home');
+                }
+              } catch (e) {
+                console.warn('Erro ao ler AsyncStorage', e);
+              }
+            }
+            resolve();
+          });
+        });
+        
+        // Pequeno atraso extra para garantir uma transição suave da Splash
+        await new Promise(resolve => setTimeout(resolve, 300));
       } catch (e) {
         console.warn(e);
       } finally {

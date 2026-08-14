@@ -16,9 +16,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -47,6 +48,7 @@ export default function AuthScreen() {
   const [username, setUsername] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingRecuperacao, setLoadingRecuperacao] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -78,6 +80,13 @@ export default function AuthScreen() {
       }
 
       await signInWithEmailAndPassword(auth, finalEmail, password);
+      
+      try {
+        await AsyncStorage.setItem('@lembrar_me_status', rememberMe ? 'true' : 'false');
+      } catch (e) {
+        console.error('Erro ao guardar preferencia de sessao', e);
+      }
+      
       router.replace('/home');
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro ao fazer login.';
@@ -89,6 +98,37 @@ export default function AuthScreen() {
       Alert.alert('Falha no Login', errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRecuperarSenha = async () => {
+    if (!loginIdentifier) {
+      Alert.alert('Atenção', 'Por favor, digite o seu e-mail no campo acima para recuperar a senha.');
+      return;
+    }
+    
+    // Expressão regular simples para verificar formato de e-mail
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(loginIdentifier)) {
+      Alert.alert('Atenção', 'O formato do e-mail é inválido.');
+      return;
+    }
+
+    setLoadingRecuperacao(true);
+    try {
+      await sendPasswordResetEmail(auth, loginIdentifier);
+      Alert.alert("Sucesso", "E-mail de redefinição enviado! Verifique a sua caixa de entrada e o spam.");
+    } catch (error: any) {
+      console.error('Erro ao recuperar senha:', error);
+      let errorMessage = 'Não foi possível enviar o e-mail de redefinição.';
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'Não encontramos nenhuma conta com este e-mail.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'O formato do e-mail é inválido.';
+      }
+      Alert.alert('Erro', errorMessage);
+    } finally {
+      setLoadingRecuperacao(false);
     }
   };
 
@@ -252,7 +292,7 @@ export default function AuthScreen() {
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Email ou Usuário"
+                    placeholder="Email"
                     placeholderTextColor="#888"
                     autoCapitalize="none"
                     value={loginIdentifier}
@@ -295,6 +335,14 @@ export default function AuthScreen() {
                     onValueChange={setRememberMe} 
                     label="Lembrar-me" 
                   />
+                  
+                  <TouchableOpacity onPress={handleRecuperarSenha} disabled={loadingRecuperacao}>
+                    {loadingRecuperacao ? (
+                      <ActivityIndicator size="small" color="#888" />
+                    ) : (
+                      <Text style={styles.forgotPasswordText}>Esqueci a senha</Text>
+                    )}
+                  </TouchableOpacity>
                 </View>
               </Animated.View>
 
@@ -479,7 +527,15 @@ const styles = StyleSheet.create({
   },
   rememberMeContainer: {
     marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
+  },
+  forgotPasswordText: {
+    color: '#888',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
   passwordHint: {
     color: '#888',

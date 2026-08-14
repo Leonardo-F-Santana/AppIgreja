@@ -1,0 +1,79 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ----------------------------------------------------------------------
+    // 1. Funções Auxiliares
+    // ----------------------------------------------------------------------
+    
+    // Verifica se o utilizador está autenticado
+    function isAuth() {
+      return request.auth != null;
+    }
+    
+    // Verifica se o utilizador tem privilégios de administrador.
+    // Faz a leitura do documento do próprio utilizador na coleção 'users'.
+    function isAdmin() {
+      return isAuth() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ----------------------------------------------------------------------
+    // 2. Permissões por Coleção
+    // ----------------------------------------------------------------------
+
+    // Coleção: users (Utilizadores)
+    match /users/{userId} {
+      // O utilizador pode ler/atualizar os seus próprios dados. Admins podem ler/atualizar todos.
+      allow read, update: if isAuth() && (request.auth.uid == userId || isAdmin());
+      
+      // Qualquer utilizador autenticado pode criar o seu documento inicial no registo
+      allow create: if isAuth() && request.auth.uid == userId;
+      
+      // Apenas admins podem apagar utilizadores
+      allow delete: if isAdmin();
+    }
+
+    // Coleção: avisos
+    match /avisos/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin(); // write engloba create, update e delete
+    }
+
+    // Coleção: eventos
+    match /eventos/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Coleção: celulas
+    match /celulas/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Coleção: doacoes
+    match /doacoes/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Coleção: pedidos_oracao
+    match /pedidos_oracao/{pedidoId} {
+      // Qualquer utilizador autenticado pode criar um novo pedido de oração
+      allow create: if isAuth();
+      
+      // O utilizador só pode ler os seus próprios pedidos (assume-se que guardamos o 'uid' no pedido).
+      // Admins podem ler todos os pedidos de oração.
+      allow read: if isAuth() && (resource.data.uid == request.auth.uid || isAdmin());
+      
+      // O utilizador pode atualizar o seu próprio pedido (ex: editar o texto).
+      // Admins podem atualizar todos os pedidos (ex: marcar como 'respondido').
+      allow update: if isAuth() && (resource.data.uid == request.auth.uid || isAdmin());
+      
+      // Apenas administradores podem apagar pedidos.
+      allow delete: if isAdmin();
+    }
+  }
+}

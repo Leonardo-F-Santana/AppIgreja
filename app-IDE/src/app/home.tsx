@@ -11,18 +11,98 @@ import {
   TouchableOpacity,
   Dimensions,
   Modal,
-  Linking,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { signOut } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import {
+  collection,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
+  Timestamp,
+  updateDoc,
+  doc,
+} from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 import SocialFabMenu from '../components/SocialFabMenu';
+import { registerForPushNotificationsAsync } from '../services/pushNotifications';
 
 const { width } = Dimensions.get('window');
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+interface Aviso {
+  id: string;
+  titulo: string;
+  mensagem: string;
+  prioridade: 'alta' | 'normal';
+  autor: string;
+  dataCriacao: Timestamp | null;
+}
+
+interface Evento {
+  id: string;
+  titulo: string;
+  descricao: string;
+  dataHora: string | Timestamp;
+  local: string;
+  criadoEm: Timestamp | null;
+}
+
+// ─── Helpers de Data ──────────────────────────────────────────────────────────
+
+function toDate(dataHora: string | Timestamp): Date {
+  if (dataHora instanceof Timestamp) {
+    return dataHora.toDate();
+  }
+  const d = new Date(dataHora);
+  return isNaN(d.getTime()) ? new Date(0) : d;
+}
+
+function getDia(dataHora: string | Timestamp): string {
+  return String(toDate(dataHora).getDate()).padStart(2, '0');
+}
+
+function getMes(dataHora: string | Timestamp): string {
+  return new Intl.DateTimeFormat('pt-BR', { month: 'short' })
+    .format(toDate(dataHora))
+    .replace('.', '')
+    .toUpperCase();
+}
+
+function getHora(dataHora: string | Timestamp): string {
+  const d = toDate(dataHora);
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function getDiaSemana(dataHora: string | Timestamp): string {
+  const str = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(toDate(dataHora));
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatarDataAviso(ts: Timestamp | null): string {
+  if (!ts) return '';
+  try {
+    const date = ts.toDate();
+    const dia = String(date.getDate()).padStart(2, '0');
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const hora = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${dia}/${mes} às ${hora}:${min}`;
+  } catch {
+    return '';
+  }
+}
+
+// ─── Menu Items ───────────────────────────────────────────────────────────────
 
 const menuItems = [
   { id: '1', title: 'Igreja', icon: 'church', family: 'FontAwesome5', route: '/igreja' },
@@ -36,38 +116,36 @@ const menuItems = [
   { id: '9', title: 'Ministérios', icon: 'fire', family: 'FontAwesome5', route: '/ministerios' },
 ];
 
-const mockNotices = [
-  { id: '1', title: 'Ensaio Geral do Louvor', date: 'Quinta, 20h', category: 'Música' },
-  { id: '2', title: 'Reunião de Liderança', date: 'Sábado, 15h', category: 'Geral' },
-];
-
 export default function HomeScreen() {
   const router = useRouter();
 
-  // Estados Dinâmicos
+  // ─── Estados Dinâmicos ────────────────────────────────────────────────────
   const [greeting, setGreeting] = useState('Olá');
   const [currentDate, setCurrentDate] = useState('');
 
-  // Controle do Drawer
+  // ─── Estados do Firestore ─────────────────────────────────────────────────
+  const [avisoDestaque, setAvisoDestaque] = useState<Aviso | null>(null);
+  const [proximoEvento, setProximoEvento] = useState<Evento | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // ─── Controle do Drawer ───────────────────────────────────────────────────
   const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(width)).current;
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toggleProfileMenu(false); // Fechar o menu
-      router.replace('/'); // Voltar para a tela de autenticação
+      toggleProfileMenu(false);
+      router.replace('/');
     } catch (error) {
       Alert.alert('Erro', 'Ocorreu um erro ao tentar sair.');
     }
   };
 
-
-
-  // Interpolação para o fundo escuro desaparecer/aparecer junto com a gaveta
+  // Interpolação para o fundo escuro do drawer
   const overlayOpacity = slideAnim.interpolate({
     inputRange: [0, width],
-    outputRange: [1, 0], // Quando o menu está aberto (0), opacidade 100%. Quando fechado (width), 0%.
+    outputRange: [1, 0],
   });
 
   const toggleProfileMenu = (open) => {
@@ -77,7 +155,7 @@ export default function HomeScreen() {
         toValue: 0,
         useNativeDriver: true,
         bounciness: 0,
-        speed: 14, // Animação mais rápida e natural (padrão iOS)
+        speed: 14,
       }).start();
     } else {
       Animated.spring(slideAnim, {
@@ -89,20 +167,94 @@ export default function HomeScreen() {
     }
   };
 
+  // ─── Saudação Dinâmica ────────────────────────────────────────────────────
   useEffect(() => {
-    // Cálculo do horário para a saudação
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) setGreeting('Bom dia');
     else if (hour >= 12 && hour < 18) setGreeting('Boa tarde');
     else setGreeting('Boa noite');
 
-    // Formatação da Data (Ex: Segunda-feira, 27 de Julho)
     const options = { weekday: 'long', day: 'numeric', month: 'long' } as const;
     const dateStr = new Intl.DateTimeFormat('pt-BR', options).format(new Date());
-    // Capitalizar a primeira letra
     setCurrentDate(dateStr.charAt(0).toUpperCase() + dateStr.slice(1));
   }, []);
 
+  // ─── Notificações Push ────────────────────────────────────────────────────
+  useEffect(() => {
+    async function setupPushNotifications() {
+      if (!auth.currentUser) return;
+      
+      try {
+        const token = await registerForPushNotificationsAsync();
+        
+        if (token) {
+          // Atualiza o utilizador no Firestore com o token
+          const userRef = doc(db, 'users', auth.currentUser.uid);
+          await updateDoc(userRef, {
+            expoPushToken: token,
+          });
+          console.log('Push token guardado com sucesso no utilizador');
+        }
+      } catch (error) {
+        console.error('Erro ao configurar Push Notifications:', error);
+      }
+    }
+    
+    setupPushNotifications();
+  }, []);
+
+  // ─── Firestore: Aviso em Destaque (último aviso) ──────────────────────────
+  useEffect(() => {
+    const avisosRef = collection(db, 'avisos');
+    const q = query(avisosRef, orderBy('dataCriacao', 'desc'), limit(1));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        setAvisoDestaque({ id: doc.id, ...doc.data() } as Aviso);
+      } else {
+        setAvisoDestaque(null);
+      }
+    }, (error) => {
+      console.error('Erro ao buscar avisos:', error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // ─── Firestore: Próximo Evento (futuro mais próximo) ──────────────────────
+  useEffect(() => {
+    const eventosRef = collection(db, 'eventos');
+    // Busca todos os eventos ordenados por dataHora ascendente
+    // e filtra no client-side pois dataHora pode ser string ISO
+    const q = query(eventosRef, orderBy('dataHora', 'asc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const agora = new Date();
+      let eventoFuturo: Evento | null = null;
+
+      for (const doc of snapshot.docs) {
+        const data = doc.data();
+        const evento = { id: doc.id, ...data } as Evento;
+        const dataEvento = toDate(evento.dataHora);
+
+        if (dataEvento >= agora) {
+          eventoFuturo = evento;
+          break; // Pega o primeiro evento futuro (mais próximo)
+        }
+      }
+
+      setProximoEvento(eventoFuturo);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Erro ao buscar eventos:', error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // ─── Renderização de Ícones ───────────────────────────────────────────────
   const renderIcon = (family: string, name: any, size = 24, color = '#FFFFFF') => {
     switch (family) {
       case 'FontAwesome5': return <FontAwesome5 name={name} size={size} color={color} />;
@@ -113,7 +265,7 @@ export default function HomeScreen() {
     }
   };
 
-  // Componente de Botão do Bento Grid (com Micro-Interação Fake Glass)
+  // ─── Componente: Bento Card ───────────────────────────────────────────────
   const BentoCard = ({ title, subtitle, icon, family, route, isLarge, onPressOverride, color = '#4ade80' }) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
 
@@ -158,7 +310,7 @@ export default function HomeScreen() {
     );
   };
 
-  // Componente de Card Horizontal (Explorar Mais)
+  // ─── Componente: Card Horizontal (Explorar Mais) ──────────────────────────
   const AnimatedMoreCard = ({ item, color }) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
 
@@ -178,12 +330,8 @@ export default function HomeScreen() {
       }).start();
     };
 
-    // Converter Hex de cor para formato com opacidade (20% -> ~33 em hex, mas podemos usar rgba se preferir)
-    // Para simplificar, vou usar um fundo sutil com o próprio color em um view.
-
-    // Função helper pra aplicar opacidade via style
     const getBgColorWithOpacity = (hexColor: string) => {
-      return hexColor + '20'; // 20 no final = 12% opacidade em hex
+      return hexColor + '20';
     };
 
     return (
@@ -202,7 +350,7 @@ export default function HomeScreen() {
     );
   };
 
-  // Componente de Item de Lista para o Drawer
+  // ─── Componente: Drawer Menu Item ─────────────────────────────────────────
   const DrawerMenuItem = ({ icon, title, family = 'Feather', isDestructive = false, onPress }: any) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
 
@@ -229,6 +377,7 @@ export default function HomeScreen() {
     );
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <ImageBackground
       source={require('../../assets/Img/Bg.jpg')}
@@ -243,10 +392,10 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-          {/* Header - Saudação Dinâmica */}
+          {/* ─── Header: Saudação Dinâmica ─────────────────────────────── */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.greetingText}>{greeting}, Leonardo</Text>
+              <Text style={styles.greetingText}>{greeting}, Membro</Text>
               <Text style={styles.dateText}>{currentDate}</Text>
             </View>
             <TouchableOpacity style={styles.profileButton} onPress={() => toggleProfileMenu(true)}>
@@ -254,28 +403,155 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Hero Section (Card de Destaque) - Fake Glass */}
-          <View style={[styles.fakeGlass, styles.heroCard]}>
-            <View style={styles.heroHeader}>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>PRÓXIMO</Text>
-              </View>
-              <Feather name="bookmark" size={20} color="#AAAAAA" />
+          {/* ─── Hero: Próximo Evento (Dinâmico do Firestore) ──────────── */}
+          {isLoading ? (
+            <View style={[styles.fakeGlass, styles.heroCard, { alignItems: 'center', justifyContent: 'center', minHeight: 160 }]}>
+              <ActivityIndicator size="large" color="#4ade80" />
+              <Text style={{ color: '#AAAAAA', marginTop: 12, fontSize: 14 }}>Carregando...</Text>
             </View>
+          ) : proximoEvento ? (
+            <View style={[styles.fakeGlass, styles.heroCard]}>
+              <View style={styles.heroHeader}>
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>PRÓXIMO EVENTO</Text>
+                </View>
+                <View style={styles.heroDateBadge}>
+                  <Feather name="calendar" size={14} color="#4ade80" />
+                  <Text style={styles.heroDateText}>
+                    {getDia(proximoEvento.dataHora)} {getMes(proximoEvento.dataHora)}
+                  </Text>
+                </View>
+              </View>
 
-            <Text style={styles.heroTitle}>Culto de Celebração</Text>
-            <Text style={styles.heroSubtitle}>Domingo às 19:00 - Sede Principal</Text>
+              <Text style={styles.heroTitle}>{proximoEvento.titulo}</Text>
+              <View style={styles.heroInfoRow}>
+                <View style={styles.heroInfoItem}>
+                  <Feather name="clock" size={14} color="#AAAAAA" />
+                  <Text style={styles.heroSubtitle}>
+                    {getDiaSemana(proximoEvento.dataHora)} às {getHora(proximoEvento.dataHora)}
+                  </Text>
+                </View>
+                {proximoEvento.local ? (
+                  <View style={styles.heroInfoItem}>
+                    <Ionicons name="location-outline" size={14} color="#AAAAAA" />
+                    <Text style={styles.heroSubtitle}>{proximoEvento.local}</Text>
+                  </View>
+                ) : null}
+              </View>
 
-            <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/cultos')}>
-              <Text style={styles.heroButtonText}>Ver Detalhes</Text>
-              <Feather name="arrow-right" size={16} color="#000000" />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/eventos')}>
+                <Text style={styles.heroButtonText}>Ver Todos os Eventos</Text>
+                <Feather name="arrow-right" size={16} color="#000000" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={[styles.fakeGlass, styles.heroCard]}>
+              <View style={styles.heroHeader}>
+                <View style={[styles.liveBadge, { backgroundColor: 'rgba(170, 170, 170, 0.15)' }]}>
+                  <Feather name="calendar" size={12} color="#AAAAAA" />
+                  <Text style={[styles.liveText, { color: '#AAAAAA', marginLeft: 6 }]}>EVENTOS</Text>
+                </View>
+              </View>
+              <Text style={styles.heroTitle}>Nenhum evento próximo</Text>
+              <Text style={[styles.heroSubtitle, { marginBottom: 20 }]}>
+                Fique atento! Novos eventos serão publicados em breve.
+              </Text>
+              <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/eventos')}>
+                <Text style={styles.heroButtonText}>Ver Histórico</Text>
+                <Feather name="arrow-right" size={16} color="#000000" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-          {/* Quick Actions (Bento Grid) */}
+          {/* ─── Aviso em Destaque (Dinâmico do Firestore) ─────────────── */}
+          {avisoDestaque && (
+            <View style={[styles.sectionContainer, { paddingHorizontal: 20 }]}>
+              <View style={styles.sectionHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialCommunityIcons
+                    name="bullhorn-outline"
+                    size={18}
+                    color={avisoDestaque.prioridade === 'alta' ? '#FF6B6B' : '#4ade80'}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.sectionTitle}>Aviso Importante</Text>
+                </View>
+                <TouchableOpacity onPress={() => router.push('/avisos')}>
+                  <Text style={styles.seeAllText}>Ver todos</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Pressable
+                onPress={() => router.push('/avisos')}
+                style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+              >
+                <View style={[
+                  styles.fakeGlass,
+                  styles.avisoDestaqueCard,
+                  avisoDestaque.prioridade === 'alta' && styles.avisoDestaqueUrgente,
+                ]}>
+                  {/* Barra lateral de prioridade */}
+                  <View style={[
+                    styles.avisoPrioridadeBar,
+                    { backgroundColor: avisoDestaque.prioridade === 'alta' ? '#FF6B6B' : '#4ade80' },
+                  ]} />
+
+                  <View style={styles.avisoContent}>
+                    {/* Badge + Data */}
+                    <View style={styles.avisoMetaRow}>
+                      <View style={[
+                        styles.avisoBadge,
+                        { backgroundColor: avisoDestaque.prioridade === 'alta' ? 'rgba(255,107,107,0.15)' : 'rgba(74,222,128,0.15)' },
+                      ]}>
+                        {avisoDestaque.prioridade === 'alta' ? (
+                          <MaterialCommunityIcons name="alert-circle" size={11} color="#FF6B6B" style={{ marginRight: 4 }} />
+                        ) : (
+                          <MaterialCommunityIcons name="check-circle" size={11} color="#4ade80" style={{ marginRight: 4 }} />
+                        )}
+                        <Text style={{
+                          fontSize: 10,
+                          fontWeight: 'bold',
+                          letterSpacing: 1,
+                          color: avisoDestaque.prioridade === 'alta' ? '#FF6B6B' : '#4ade80',
+                        }}>
+                          {avisoDestaque.prioridade === 'alta' ? 'URGENTE' : 'AVISO'}
+                        </Text>
+                      </View>
+                      {avisoDestaque.dataCriacao && (
+                        <Text style={styles.avisoDate}>
+                          {formatarDataAviso(avisoDestaque.dataCriacao)}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Título */}
+                    <Text style={styles.avisoTitulo} numberOfLines={2}>
+                      {avisoDestaque.titulo}
+                    </Text>
+
+                    {/* Mensagem (preview) */}
+                    {avisoDestaque.mensagem ? (
+                      <Text style={styles.avisoMensagem} numberOfLines={2}>
+                        {avisoDestaque.mensagem}
+                      </Text>
+                    ) : null}
+
+                    {/* Autor */}
+                    {avisoDestaque.autor ? (
+                      <View style={styles.avisoAutorRow}>
+                        <Feather name="user" size={12} color="#666666" />
+                        <Text style={styles.avisoAutor}>{avisoDestaque.autor}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              </Pressable>
+            </View>
+          )}
+
+          {/* ─── Quick Actions (Bento Grid) ────────────────────────────── */}
           <View style={styles.sectionContainer}>
-
             <View style={styles.bentoContainer}>
               {/* Row 1 - Destaque */}
               <View style={styles.bentoRow}>
@@ -332,7 +608,7 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Explorar Mais (Horizontal Scroll) */}
+          {/* ─── Explorar Mais (Horizontal Scroll) ─────────────────────── */}
           <View style={styles.sectionContainer}>
             <View style={styles.exploreHeader}>
               <View>
@@ -357,34 +633,12 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
 
-          {/* Preview de Avisos (Notices) */}
-          <View style={[styles.sectionContainer, { paddingHorizontal: 20 }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Últimos Avisos</Text>
-              <TouchableOpacity onPress={() => router.push('/avisos')}>
-                <Text style={styles.seeAllText}>Ver todos</Text>
-              </TouchableOpacity>
-            </View>
-
-            {mockNotices.map((notice) => (
-              <View key={notice.id} style={[styles.fakeGlass, styles.noticeCard]}>
-                <View style={styles.noticeIcon}>
-                  <Feather name="bell" size={20} color="#4ade80" />
-                </View>
-                <View style={styles.noticeContent}>
-                  <Text style={styles.noticeTitle}>{notice.title}</Text>
-                  <Text style={styles.noticeDate}>{notice.date} • {notice.category}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
         </ScrollView>
       </SafeAreaView>
 
       <SocialFabMenu />
 
-      {/* Profile Drawer Modal */}
+      {/* ─── Profile Drawer Modal ────────────────────────────────────── */}
       <Modal
         visible={isProfileMenuVisible}
         transparent={true}
@@ -415,13 +669,13 @@ export default function HomeScreen() {
 
             {/* Drawer Menu List */}
             <View style={styles.drawerList}>
-              <DrawerMenuItem icon="user" title="Editar Perfil" />
+              <DrawerMenuItem icon="user" title="Editar Perfil" onPress={() => { toggleProfileMenu(false); router.push('/perfil'); }} />
               <View style={styles.drawerDivider} />
 
-              <DrawerMenuItem icon="settings" title="Configurações" />
+              <DrawerMenuItem icon="settings" title="Configurações" onPress={() => { toggleProfileMenu(false); router.push('/perfil'); }} />
               <View style={styles.drawerDivider} />
 
-              <DrawerMenuItem icon="heart" title="Minhas Doações" />
+              <DrawerMenuItem icon="heart" title="Minhas Doações" onPress={() => { toggleProfileMenu(false); router.push('/doacoes'); }} />
               <View style={styles.drawerDivider} />
 
               <DrawerMenuItem icon="bell" title="Notificações" />
@@ -444,8 +698,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(5, 5, 10, 0.75)', // Escurece o background image
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(5, 5, 10, 0.75)',
   },
   safeArea: {
     flex: 1,
@@ -455,7 +713,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   // -- ESTILO FAKE GLASSMORPHISM --
-  // Utiliza transparência escura, borda sutil e sombra para criar descolamento
   fakeGlass: {
     backgroundColor: 'rgba(15, 15, 25, 0.85)',
     borderWidth: 1,
@@ -497,7 +754,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // -- Hero Section --
+  // -- Hero Section (Próximo Evento) --
   heroCard: {
     marginHorizontal: 20,
     padding: 20,
@@ -530,16 +787,38 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 1,
   },
+  heroDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
+  },
+  heroDateText: {
+    color: '#4ade80',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   heroTitle: {
     color: '#FFFFFF',
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 8,
+  },
+  heroInfoRow: {
+    marginBottom: 20,
+    gap: 6,
+  },
+  heroInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   heroSubtitle: {
     color: '#AAAAAA',
     fontSize: 14,
-    marginBottom: 20,
   },
   heroButton: {
     flexDirection: 'row',
@@ -556,6 +835,62 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
+  // -- Aviso em Destaque --
+  avisoDestaqueCard: {
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  avisoDestaqueUrgente: {
+    borderColor: 'rgba(255, 107, 107, 0.25)',
+  },
+  avisoPrioridadeBar: {
+    width: 4,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+  },
+  avisoContent: {
+    flex: 1,
+    padding: 16,
+  },
+  avisoMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  avisoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  avisoDate: {
+    color: '#666666',
+    fontSize: 11,
+  },
+  avisoTitulo: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  avisoMensagem: {
+    color: '#AAAAAA',
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 8,
+  },
+  avisoAutorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  avisoAutor: {
+    color: '#666666',
+    fontSize: 12,
+  },
+
   // -- General Sections --
   sectionContainer: {
     marginBottom: 30,
@@ -564,8 +899,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-    marginLeft: 20,
-    marginBottom: 15,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -645,49 +978,19 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
 
-  // -- Notices Preview --
-  noticeCard: {
-    flexDirection: 'row',
-    padding: 16,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  noticeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  noticeContent: {
-    flex: 1,
-  },
-  noticeTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  noticeDate: {
-    color: '#AAAAAA',
-    fontSize: 12,
-  },
-
   // -- Profile Drawer Menu --
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     flexDirection: 'row',
-    justifyContent: 'flex-end', // Alinha o drawer à direita
+    justifyContent: 'flex-end',
   },
   drawerContainer: {
-    width: width * 0.75, // 75% da tela
+    width: width * 0.75,
     height: '100%',
-    backgroundColor: 'rgba(15, 15, 25, 0.95)', // Fundo escuro
+    backgroundColor: 'rgba(15, 15, 25, 0.95)',
     borderLeftWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)', // Fake Glass border
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 20 : 60,
     paddingBottom: 40,
     elevation: 20,
@@ -787,11 +1090,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   moreCard: {
-    backgroundColor: 'rgba(15, 15, 25, 0.90)', // Mais sólido e destacado
+    backgroundColor: 'rgba(15, 15, 25, 0.90)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 24,
-    width: width * 0.38, // Exato para cortar o terceiro card na tela, mostrando affordance de swipe
+    width: width * 0.38,
     height: 145,
     padding: 16,
     marginRight: 12,
@@ -813,5 +1116,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: 'bold',
-  }
+  },
 });
