@@ -18,7 +18,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.leonardofsantana.projetoexpo"
+      "package": "com.leonardofsantana.projetoexpo",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

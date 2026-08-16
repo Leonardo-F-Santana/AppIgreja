@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "591090128111",
+    "project_id": "ministerioide",
+    "storage_bucket": "ministerioide.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:591090128111:android:118d2fbb04a951e98bf71a",
+        "android_client_info": {
+          "package_name": "com.leonardofsantana.projetoexpo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxfmsiVja54QcOpg22udLYt7r_1Zd83mE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
