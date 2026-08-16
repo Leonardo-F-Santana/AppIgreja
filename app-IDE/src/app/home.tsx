@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import {
   collection,
   query,
@@ -28,6 +28,7 @@ import {
   Timestamp,
   updateDoc,
   doc,
+  getDoc,
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import SocialFabMenu from '../components/SocialFabMenu';
@@ -122,6 +123,8 @@ export default function HomeScreen() {
   // ─── Estados Dinâmicos ────────────────────────────────────────────────────
   const [greeting, setGreeting] = useState('Olá');
   const [currentDate, setCurrentDate] = useState('');
+  const [userName, setUserName] = useState('Membro');
+  const [userEmail, setUserEmail] = useState('');
 
   // ─── Estados do Firestore ─────────────────────────────────────────────────
   const [avisoDestaque, setAvisoDestaque] = useState<Aviso | null>(null);
@@ -179,17 +182,41 @@ export default function HomeScreen() {
     setCurrentDate(dateStr.charAt(0).toUpperCase() + dateStr.slice(1));
   }, []);
 
+  // ─── Buscar Dados do Usuário ──────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchUserData() {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+      
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setUserName(data.username || currentUser.email?.split('@')[0] || 'Membro');
+          setUserEmail(data.email || currentUser.email || '');
+        } else {
+          setUserName(currentUser.email?.split('@')[0] || 'Membro');
+          setUserEmail(currentUser.email || '');
+        }
+      } catch (error) {
+        console.error('Erro ao buscar dados do usuário:', error);
+        setUserName(currentUser.email?.split('@')[0] || 'Membro');
+        setUserEmail(currentUser.email || '');
+      }
+    }
+    fetchUserData();
+  }, []);
+
   // ─── Notificações Push ────────────────────────────────────────────────────
   useEffect(() => {
-    async function setupPushNotifications() {
-      if (!auth.currentUser) return;
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
       
       try {
         const token = await registerForPushNotificationsAsync();
         
         if (token) {
-          // Atualiza o utilizador no Firestore com o token
-          const userRef = doc(db, 'users', auth.currentUser.uid);
+          const userRef = doc(db, 'users', user.uid);
           await updateDoc(userRef, {
             expoPushToken: token,
           });
@@ -198,9 +225,9 @@ export default function HomeScreen() {
       } catch (error) {
         console.error('Erro ao configurar Push Notifications:', error);
       }
-    }
-    
-    setupPushNotifications();
+    });
+
+    return () => unsubscribeAuth();
   }, []);
 
   // ─── Firestore: Aviso em Destaque (último aviso) ──────────────────────────
@@ -395,7 +422,7 @@ export default function HomeScreen() {
           {/* ─── Header: Saudação Dinâmica ─────────────────────────────── */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.greetingText}>{greeting}, Membro</Text>
+              <Text style={styles.greetingText}>{greeting}, {userName}</Text>
               <Text style={styles.dateText}>{currentDate}</Text>
             </View>
             <TouchableOpacity style={styles.profileButton} onPress={() => toggleProfileMenu(true)}>
@@ -663,8 +690,8 @@ export default function HomeScreen() {
                 <Text style={styles.changePhotoText}>Alterar foto de perfil</Text>
               </TouchableOpacity>
 
-              <Text style={styles.profileName}>Leonardo</Text>
-              <Text style={styles.profileEmail}>discipuloleonardo@gmail.com</Text>
+              <Text style={styles.profileName}>{userName}</Text>
+              <Text style={styles.profileEmail}>{userEmail}</Text>
             </View>
 
             {/* Drawer Menu List */}

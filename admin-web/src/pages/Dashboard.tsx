@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, X, Bell, AlertTriangle } from 'lucide-react';
-import { criarAviso, type Prioridade } from '../services/avisosService';
+import { ArrowRight, X, Bell, AlertTriangle, Megaphone, CalendarPlus, Users, HeartHandshake, Edit2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { criarAviso, ouvirUltimosAvisos, type Prioridade, type Aviso } from '../services/avisosService';
 import { ouvirResumoDashboard, type DashboardResumo } from '../services/dashboardService';
-import { Timestamp } from 'firebase/firestore';
+import { ouvirProximosEventos, type Evento } from '../services/eventosService';
+import { ouvirCelulas, type Celula } from '../services/celulasService';
+import { Timestamp, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
@@ -156,11 +160,19 @@ function formatEventDate(d: any) {
 // ─── Dashboard Principal ──────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'erro' } | null>(null);
   
   const [resumo, setResumo] = useState<DashboardResumo | null>(null);
+  const [proximosEventos, setProximosEventos] = useState<Evento[]>([]);
+  const [loadingEventos, setLoadingEventos] = useState(true);
+  const [ultimosAvisos, setUltimosAvisos] = useState<Aviso[]>([]);
+  const [loadingAvisos, setLoadingAvisos] = useState(true);
+  const [dadosCelulas, setDadosCelulas] = useState<Celula[]>([]);
+  const [loadingCelulas, setLoadingCelulas] = useState(true);
+  const [metaAnual, setMetaAnual] = useState<number>(50);
 
   useEffect(() => {
     const unsubscribe = ouvirResumoDashboard((dados) => {
@@ -168,6 +180,59 @@ export default function Dashboard() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = ouvirProximosEventos((eventos) => {
+      setProximosEventos(eventos);
+      setLoadingEventos(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = ouvirUltimosAvisos((avisos) => {
+      setUltimosAvisos(avisos);
+      setLoadingAvisos(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = ouvirCelulas((celulas) => {
+      setDadosCelulas(celulas);
+      setLoadingCelulas(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'configuracoes', 'celulas'), (docSnap) => {
+      if (docSnap.exists() && typeof docSnap.data().metaAnual === 'number') {
+        setMetaAnual(docSnap.data().metaAnual);
+      } else {
+        setMetaAnual(50);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleEditarMeta = async () => {
+    const novaMetaStr = window.prompt('Digite a nova meta anual de células:', metaAnual.toString());
+    if (novaMetaStr !== null) {
+      const novaMeta = parseInt(novaMetaStr, 10);
+      if (!isNaN(novaMeta) && novaMeta > 0) {
+        try {
+          await setDoc(doc(db, 'configuracoes', 'celulas'), { metaAnual: novaMeta }, { merge: true });
+          setToast({ mensagem: 'Meta atualizada com sucesso!', tipo: 'sucesso' });
+        } catch (error) {
+          console.error('Erro ao atualizar meta:', error);
+          setToast({ mensagem: 'Erro ao atualizar meta.', tipo: 'erro' });
+        }
+      } else {
+        alert('Por favor, digite um número válido maior que zero.');
+      }
+    }
+  };
 
   const handlePublicar = async (titulo: string, mensagem: string, prioridade: Prioridade) => {
     setIsLoading(true);
@@ -184,6 +249,15 @@ export default function Dashboard() {
   };
 
   const isDataLoading = resumo === null;
+
+  // Cálculos para o Status de Células
+  const META_ANUAL_CELULAS = metaAnual;
+  const totalCelulasMeta = dadosCelulas.length;
+  // Consideramos como ativas aquelas que não têm status marcado como 'inativo'
+  const celulasAtivasCount = dadosCelulas.filter(c => (c as any).status !== 'inativo').length;
+  const percentualAtivas = totalCelulasMeta === 0 ? 0 : Math.round((celulasAtivasCount / totalCelulasMeta) * 100);
+  const percentualMetaRaw = Math.round((totalCelulasMeta / META_ANUAL_CELULAS) * 100);
+  const percentualMeta = percentualMetaRaw > 100 ? 100 : percentualMetaRaw;
 
   return (
     <>
@@ -300,13 +374,13 @@ export default function Dashboard() {
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Breve</span>
             </div>
             <div className="flex-1 flex flex-col gap-4">
-              {isDataLoading ? (
-                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">Carregando eventos...</p></div>
-              ) : resumo.proximosEventos.length === 0 ? (
-                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">Nenhum evento futuro encontrado.</p></div>
+              {loadingEventos ? (
+                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">A carregar...</p></div>
+              ) : proximosEventos.length === 0 ? (
+                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">Não há atividades agendadas.</p></div>
               ) : (
-                resumo.proximosEventos.map(evento => {
-                  const dataFormatada = formatEventDate(evento.data);
+                proximosEventos.map(evento => {
+                  const dataFormatada = formatEventDate(evento.dataHora);
                   return (
                     <div key={evento.id} className="flex items-center gap-4">
                       <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 w-12 flex flex-col items-center justify-center flex-shrink-0">
@@ -327,33 +401,49 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Card Central: Frequência (Estático) */}
+          {/* Card Central: Células */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-            <h3 className="text-gray-900 text-sm font-bold mb-4">Frequência nos Cultos</h3>
-            <div className="text-center my-4">
-              <span className="text-6xl font-black text-gray-900 tracking-tighter">86%</span>
-            </div>
-            <ul className="flex flex-col gap-3 mb-6 mt-2">
-              <li className="flex justify-between items-center text-sm font-bold">
-                <div className="flex items-center gap-2 text-gray-900">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Domingo
+            <h3 className="text-gray-900 text-sm font-bold mb-4">Células por Dia da Semana</h3>
+            {loadingCelulas ? (
+              <div className="flex-1 flex items-center justify-center min-h-[160px]">
+                <p className="text-xs text-gray-400">A carregar...</p>
+              </div>
+            ) : dadosCelulas.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center min-h-[160px] text-center">
+                <p className="text-xs text-gray-400 font-medium">Nenhuma célula cadastrada.</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-center my-4 flex flex-col items-center">
+                  <span className="text-6xl font-black text-gray-900 tracking-tighter">{dadosCelulas.length}</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Total Ativas</span>
                 </div>
-                <span className="text-gray-500 font-semibold">52%</span>
-              </li>
-              <li className="flex justify-between items-center text-sm font-bold">
-                <div className="flex items-center gap-2 text-gray-900">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-200"></span> Quarta
-                </div>
-                <span className="text-gray-500 font-semibold">22%</span>
-              </li>
-              <li className="flex justify-between items-center text-sm font-bold">
-                <div className="flex items-center gap-2 text-gray-900">
-                  <span className="w-2.5 h-2.5 rounded-full bg-gray-200"></span> Jovens
-                </div>
-                <span className="text-gray-500 font-semibold">12%</span>
-              </li>
-            </ul>
-            <button className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-900 font-bold text-xs hover:bg-gray-50 transition-colors">
+                <ul className="flex flex-col gap-3 mb-6 mt-2">
+                  {Object.entries(
+                    dadosCelulas.reduce((acc, celula) => {
+                      acc[celula.diaSemana] = (acc[celula.diaSemana] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  )
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(([dia, qtd], index) => {
+                      const percentual = Math.round((qtd / dadosCelulas.length) * 100);
+                      const cores = ["bg-emerald-500", "bg-emerald-200", "bg-gray-200"];
+                      const cor = cores[index] || "bg-gray-100";
+                      return (
+                        <li key={dia} className="flex justify-between items-center text-sm font-bold">
+                          <div className="flex items-center gap-2 text-gray-900">
+                            <span className={`w-2.5 h-2.5 rounded-full ${cor}`}></span> {dia.split('-')[0]}
+                          </div>
+                          <span className="text-gray-500 font-semibold">{percentual}%</span>
+                        </li>
+                      );
+                    })}
+                </ul>
+              </>
+            )}
+            <button className="w-full mt-auto py-2.5 rounded-xl border border-gray-200 text-gray-900 font-bold text-xs hover:bg-gray-50 transition-colors">
               Ver Detalhes
             </button>
           </div>
@@ -367,15 +457,15 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="flex-1 flex flex-col gap-4 justify-start">
-              {isDataLoading ? (
-                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">Carregando...</p></div>
-              ) : resumo.ultimosAvisos.length === 0 ? (
+              {loadingAvisos ? (
+                 <div className="flex-1 flex items-center justify-center"><p className="text-xs text-gray-400">A carregar...</p></div>
+              ) : ultimosAvisos.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
                   <Bell size={28} className="text-gray-200 mb-2" />
-                  <p className="text-xs text-gray-400 font-medium">Nenhum aviso publicado ainda.</p>
+                  <p className="text-xs text-gray-400 font-medium">Nenhum aviso publicado recentemente.</p>
                 </div>
               ) : (
-                resumo.ultimosAvisos.map((aviso) => (
+                ultimosAvisos.map((aviso) => (
                   <div key={aviso.id} className="flex gap-3">
                     <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${aviso.prioridade === 'alta' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
                     <div>
@@ -391,26 +481,29 @@ export default function Dashboard() {
 
         {/* 4. Linha 3 - Status e Banners */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Barras Horizontais: Células (Estático) */}
+          {/* Barras Horizontais: Células (Dinâmico) */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-center min-h-[180px]">
             <h3 className="text-gray-900 text-sm font-bold mb-6">Status de Células</h3>
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-xs font-bold text-gray-900">Engajamento Semanal</span>
-                  <span className="text-xs font-extrabold text-gray-500">89%</span>
+                  <span className="text-xs font-bold text-gray-900">Células Ativas</span>
+                  <span className="text-xs font-extrabold text-gray-500">{loadingCelulas ? '-' : `${percentualAtivas}%`}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                  <div className="bg-emerald-500 h-3 rounded-full w-[89%]"></div>
+                  <div className="bg-emerald-500 h-3 rounded-full transition-all duration-1000" style={{ width: loadingCelulas ? '0%' : `${percentualAtivas}%` }}></div>
                 </div>
               </div>
               <div>
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-xs font-bold text-gray-900">Multiplicação (Meta Anual)</span>
-                  <span className="text-xs font-extrabold text-gray-500">65%</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-900">Multiplicação (Meta: {metaAnual})</span>
+                    <Edit2 size={14} className="text-gray-400 hover:text-blue-500 cursor-pointer" onClick={handleEditarMeta} />
+                  </div>
+                  <span className="text-xs font-extrabold text-gray-500">{loadingCelulas ? '-' : `${percentualMeta}%`}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                  <div className="bg-blue-500 h-3 rounded-full w-[65%]"></div>
+                  <div className="bg-blue-500 h-3 rounded-full transition-all duration-1000" style={{ width: loadingCelulas ? '0%' : `${percentualMeta}%` }}></div>
                 </div>
               </div>
             </div>
@@ -420,21 +513,49 @@ export default function Dashboard() {
           <div className="relative overflow-hidden bg-gradient-to-br from-emerald-900 to-emerald-800 rounded-3xl p-8 flex flex-col justify-between min-h-[180px] shadow-sm">
             <div className="absolute -top-12 -right-12 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
             <div className="absolute bottom-0 right-10 w-32 h-32 bg-emerald-400/10 rounded-full blur-xl"></div>
-            <div className="relative z-10">
+            <div className="relative z-10 mb-4">
               <h2 className="text-2xl font-bold text-white mb-2 leading-tight">Painel de<br/>Ações Rápidas</h2>
-              <p className="text-emerald-100/70 text-xs font-medium max-w-[60%]">Gerencie a comunidade e conecte membros com facilidade.</p>
+              <p className="text-emerald-100/70 text-xs font-medium max-w-[80%]">Atalhos essenciais para gerenciar a comunidade.</p>
             </div>
-            <div className="relative z-10 flex justify-between items-end mt-6">
-              <div className="flex -space-x-3">
-                <img className="w-10 h-10 rounded-full border-2 border-emerald-900 bg-emerald-800" src="https://i.pravatar.cc/100?img=12" alt="Avatar 1" />
-                <img className="w-10 h-10 rounded-full border-2 border-emerald-900 bg-emerald-800" src="https://i.pravatar.cc/100?img=33" alt="Avatar 2" />
-                <img className="w-10 h-10 rounded-full border-2 border-emerald-900 bg-emerald-800" src="https://i.pravatar.cc/100?img=47" alt="Avatar 3" />
-              </div>
+            <div className="relative z-10 grid grid-cols-2 gap-3 mt-auto">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-white hover:bg-gray-50 text-emerald-900 w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-sm"
+                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-colors p-3 rounded-2xl border border-white/5 text-white text-left group shadow-sm"
               >
-                <ArrowRight size={18} />
+                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-300 group-hover:scale-110 transition-transform">
+                  <Megaphone size={16} />
+                </div>
+                <span className="text-xs font-bold leading-tight">Publicar<br/>Aviso</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/eventos')}
+                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-colors p-3 rounded-2xl border border-white/5 text-white text-left group shadow-sm"
+              >
+                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-300 group-hover:scale-110 transition-transform">
+                  <CalendarPlus size={16} />
+                </div>
+                <span className="text-xs font-bold leading-tight">Novo<br/>Evento</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/celulas')}
+                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-colors p-3 rounded-2xl border border-white/5 text-white text-left group shadow-sm"
+              >
+                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-300 group-hover:scale-110 transition-transform">
+                  <Users size={16} />
+                </div>
+                <span className="text-xs font-bold leading-tight">Nova<br/>Célula</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/pedidos')}
+                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-colors p-3 rounded-2xl border border-white/5 text-white text-left group shadow-sm"
+              >
+                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-300 group-hover:scale-110 transition-transform">
+                  <HeartHandshake size={16} />
+                </div>
+                <span className="text-xs font-bold leading-tight">Pedidos de<br/>Oração</span>
               </button>
             </div>
           </div>

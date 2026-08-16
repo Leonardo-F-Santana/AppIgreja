@@ -8,6 +8,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  limit,
   Timestamp,
   getDocs,
 } from "firebase/firestore";
@@ -112,6 +113,32 @@ export function ouvirAvisos(
   callback: (avisos: Aviso[]) => void
 ): () => void {
   const q = query(avisosRef, orderBy("dataCriacao", "desc"));
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const avisos: Aviso[] = snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        titulo: data.titulo ?? "",
+        mensagem: data.mensagem ?? "",
+        prioridade: data.prioridade ?? "normal",
+        autor: data.autor ?? "Desconhecido",
+        dataCriacao: data.dataCriacao ?? null,
+      };
+    });
+    callback(avisos);
+  });
+
+  return unsubscribe;
+}
+
+/**
+ * Escuta os 3 avisos mais recentes em tempo real.
+ */
+export function ouvirUltimosAvisos(
+  callback: (avisos: Aviso[]) => void
+): () => void {
+  const q = query(avisosRef, orderBy("dataCriacao", "desc"), limit(3));
 
   const unsubscribe = onSnapshot(q, (snapshot) => {
     const avisos: Aviso[] = snapshot.docs.map((docSnap) => {

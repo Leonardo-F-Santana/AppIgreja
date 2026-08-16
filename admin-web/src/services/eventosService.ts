@@ -8,6 +8,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  limit,
+  where,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
@@ -97,6 +99,47 @@ export function ouvirEventos(
     },
     (error) => {
       console.error("[eventosService] Erro ao escutar eventos:", error.message);
+      callback([]);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Escuta os próximos 3 eventos a partir da data atual (tempo real).
+ */
+export function ouvirProximosEventos(
+  callback: (eventos: Evento[]) => void
+): () => void {
+  const hoje = new Date().toISOString();
+  
+  const q = query(
+    eventosRef,
+    where("dataHora", ">=", hoje),
+    orderBy("dataHora", "asc"),
+    limit(3)
+  );
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const eventos: Evento[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          titulo: data.titulo ?? "",
+          descricao: data.descricao ?? "",
+          dataHora: data.dataHora ?? "",
+          local: data.local ?? "",
+          criadoEm: data.criadoEm ?? null,
+        };
+      });
+      callback(eventos);
+    },
+    (error) => {
+      console.error("[eventosService] Erro ao escutar próximos eventos:", error.message);
+      // Fallback simples
       callback([]);
     }
   );

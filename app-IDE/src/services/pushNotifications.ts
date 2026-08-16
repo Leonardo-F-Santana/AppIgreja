@@ -61,10 +61,12 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
     
     try {
       const projectId =
-        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+        Constants?.expoConfig?.extra?.eas?.projectId ?? 
+        Constants?.easConfig?.projectId ?? 
+        'ec572129-260b-44fd-b598-a54466da7bf4';
         
       token = (await Notifications.getExpoPushTokenAsync({
-        projectId: projectId || '1:591090128111:web:6c23bd3ab84d2a378bf71a', // Usando projectId provisório caso eas.json não esteja configurado perfeitamente no dev
+        projectId,
       })).data;
       console.log('Expo Push Token:', token);
     } catch (error) {
