@@ -173,6 +173,12 @@ export default function Dashboard() {
   const [dadosCelulas, setDadosCelulas] = useState<Celula[]>([]);
   const [loadingCelulas, setLoadingCelulas] = useState(true);
   const [metaAnual, setMetaAnual] = useState<number>(50);
+  const [animateBars, setAnimateBars] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setAnimateBars(true), 150);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = ouvirResumoDashboard((dados) => {
@@ -297,10 +303,10 @@ export default function Dashboard() {
                 <p className="text-xs font-bold text-emerald-600 mt-2 bg-emerald-50 w-max px-2.5 py-1 rounded-full">+12%</p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
-                 <div className="w-1.5 bg-emerald-300 rounded-t-sm h-[40%]"></div>
-                 <div className="w-1.5 bg-emerald-500 rounded-t-sm h-[70%]"></div>
-                 <div className="w-1.5 bg-gray-200 rounded-t-sm h-[50%]"></div>
-                 <div className="w-1.5 bg-emerald-500 rounded-t-sm h-[100%]"></div>
+                 <div className={`w-1.5 bg-emerald-300 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[40%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-emerald-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[70%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[50%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-emerald-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
               </div>
             </div>
           </div>
@@ -314,10 +320,10 @@ export default function Dashboard() {
                 <p className="text-xs font-bold text-emerald-600 mt-2 bg-emerald-50 w-max px-2.5 py-1 rounded-full">+5%</p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
-                 <div className="w-1.5 bg-emerald-500 rounded-t-sm h-[100%]"></div>
-                 <div className="w-1.5 bg-gray-200 rounded-t-sm h-[30%]"></div>
-                 <div className="w-1.5 bg-gray-200 rounded-t-sm h-[50%]"></div>
-                 <div className="w-1.5 bg-emerald-500 rounded-t-sm h-[80%]"></div>
+                 <div className={`w-1.5 bg-emerald-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[30%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[50%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-emerald-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[80%]' : 'h-0'}`}></div>
               </div>
             </div>
           </div>
@@ -335,10 +341,10 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
-                 <div className="w-1.5 bg-orange-400 rounded-t-sm h-[60%]"></div>
-                 <div className="w-1.5 bg-orange-400 rounded-t-sm h-[80%]"></div>
-                 <div className="w-1.5 bg-orange-400 rounded-t-sm h-[100%]"></div>
-                 <div className="w-1.5 bg-gray-200 rounded-t-sm h-[40%]"></div>
+                 <div className={`w-1.5 bg-orange-400 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[60%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-orange-400 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[80%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-orange-400 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[40%]' : 'h-0'}`}></div>
               </div>
             </div>
           </div>
@@ -356,10 +362,10 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
-                 <div className="w-1.5 bg-gray-200 rounded-t-sm h-[100%]"></div>
-                 <div className="w-1.5 bg-blue-500 rounded-t-sm h-[40%]"></div>
-                 <div className="w-1.5 bg-blue-500 rounded-t-sm h-[60%]"></div>
-                 <div className="w-1.5 bg-blue-500 rounded-t-sm h-[90%]"></div>
+                 <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[40%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[60%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[90%]' : 'h-0'}`}></div>
               </div>
             </div>
           </div>
