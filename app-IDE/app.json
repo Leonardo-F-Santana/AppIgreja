@@ -35,6 +35,15 @@
           "imageWidth": 200
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/Img/logo sem fundo.png",
+          "color": "#4ade80",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ],
       "expo-web-browser",
       "expo-video"
     ],

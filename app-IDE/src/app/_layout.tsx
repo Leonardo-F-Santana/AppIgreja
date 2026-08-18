@@ -7,6 +7,12 @@ import { auth } from '../config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
+// Importa o módulo de push notifications para que o handler e o canal Android
+// sejam configurados o mais cedo possível na inicialização do app.
+// Isso garante que notificações push cheguem com som e alerta mesmo antes
+// do usuário navegar para a tela Home.
+import '../services/pushNotifications';
+
 // Impede que a splash screen nativa suma automaticamente
 SplashScreen.preventAutoHideAsync();
 

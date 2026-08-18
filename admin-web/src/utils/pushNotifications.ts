@@ -4,6 +4,8 @@ export interface ExpoPushMessage {
   title: string;
   body: string;
   data?: Record<string, unknown>;
+  channelId?: string;
+  priority?: 'default' | 'normal' | 'high';
 }
 
 /**
@@ -29,10 +31,20 @@ export async function enviarNotificacaoPushEmMassa(
     sound: 'default',
     title: titulo,
     body: mensagem,
+    channelId: 'default',
+    priority: 'high',
+    data: {
+      tipo: 'aviso',
+      timestamp: Date.now(),
+    },
   }));
 
   try {
-    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+    // Em desenvolvimento, usa o proxy do Vite (/api/push -> exp.host)
+    // Em produção, pode-se apontar para uma Cloud Function via variável de ambiente
+    const pushUrl = import.meta.env.VITE_EXPO_PUSH_URL || '/api/push';
+
+    const response = await fetch(pushUrl, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
