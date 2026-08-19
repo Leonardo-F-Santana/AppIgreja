@@ -1,27 +1,31 @@
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 
+let Notifications: any = null;
+try {
+  // O expo-notifications dá crash imediato ao ser importado no Expo Go (Android SDK 53+)
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.log('[pushNotifications] expo-notifications não suportado neste ambiente (Expo Go).');
+}
+
 // ─── Configuração do handler de notificações (foreground) ──────────────────
-// Quando o app está aberto e uma notificação chega, este handler decide
-// se ela deve aparecer com alerta, som e badge.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 // ─── Configurar canal de notificação Android ───────────────────────────────
-// No Android 8+ (API 26+), notificações precisam de um canal.
-// Criamos o canal o mais cedo possível para que notificações push que
-// chegam via FCM/Expo encontrem o canal já registrado com som + vibração.
 async function configurarCanalAndroid(): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  if (Platform.OS !== 'android' || !Notifications) return;
 
   await Notifications.setNotificationChannelAsync('default', {
     name: 'Avisos e Notificações',
@@ -46,8 +50,8 @@ configurarCanalAndroid().catch((err) =>
 
 export async function registerForPushNotificationsAsync(): Promise<string | undefined> {
   // Expo Go não suporta push notifications
-  if (Constants.appOwnership === 'expo') {
-    console.log('[pushNotifications] Push notifications não funcionam no Expo Go. Use uma build de desenvolvimento.');
+  if (Constants.appOwnership === 'expo' || !Notifications) {
+    console.log('[pushNotifications] Push notifications não funcionam no Expo Go ou a lib não foi carregada.');
     return undefined;
   }
 

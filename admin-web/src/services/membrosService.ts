@@ -2,10 +2,15 @@ import {
   collection,
   updateDoc,
   doc,
+  addDoc,
+  deleteDoc,
   onSnapshot,
   query,
   orderBy,
+  where,
+  getDocs,
   Timestamp,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 
@@ -16,7 +21,16 @@ export interface Membro {
   username: string;
   email: string;
   role: string;
+  telefone?: string;
+  acessoApp: boolean;
   createdAt: Timestamp | null;
+}
+
+export interface MembroPayload {
+  username: string;
+  email?: string;
+  telefone?: string;
+  role: string;
 }
 
 // ─── Referência da coleção ───────────────────────────────────────────────────
@@ -35,6 +49,42 @@ export async function atualizarFuncaoMembro(
 ): Promise<void> {
   const docRef = doc(db, "users", id);
   await updateDoc(docRef, { role: novaFuncao });
+}
+
+export async function adicionarMembroManual(dados: MembroPayload): Promise<string> {
+  // Verifica se o e-mail já está cadastrado
+  if (dados.email) {
+    const emailSanitizado = dados.email.toLowerCase().trim();
+    const emailQuery = query(membrosRef, where('email', '==', emailSanitizado));
+    const querySnapshot = await getDocs(emailQuery);
+    
+    if (!querySnapshot.empty) {
+      throw new Error('DUPLICATE_EMAIL');
+    }
+    
+    // Assegura que o e-mail será salvo limpo
+    dados.email = emailSanitizado;
+  }
+
+  const docRef = await addDoc(membrosRef, {
+    ...dados,
+    acessoApp: false,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+export async function editarMembroManual(
+  id: string,
+  dados: MembroPayload
+): Promise<void> {
+  const docRef = doc(db, "users", id);
+  await updateDoc(docRef, { ...dados });
+}
+
+export async function deletarMembro(id: string): Promise<void> {
+  const docRef = doc(db, "users", id);
+  await deleteDoc(docRef);
 }
 
 /**
@@ -57,6 +107,8 @@ export function ouvirMembros(
           username: data.username ?? "Sem Nome",
           email: data.email ?? "sem-email@ide.com",
           role: data.role ?? "membro", // Se não tiver role, assume 'membro'
+          telefone: data.telefone ?? undefined,
+          acessoApp: data.acessoApp ?? true,
           createdAt: data.createdAt ?? null,
         };
       });
@@ -75,6 +127,8 @@ export function ouvirMembros(
               username: data.username ?? "Sem Nome",
               email: data.email ?? "sem-email@ide.com",
               role: data.role ?? "membro",
+              telefone: data.telefone ?? undefined,
+              acessoApp: data.acessoApp ?? true,
               createdAt: data.createdAt ?? null,
             };
           });

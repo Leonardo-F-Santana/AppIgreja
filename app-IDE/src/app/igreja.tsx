@@ -49,7 +49,6 @@ export default function IgrejaScreen() {
           player={player} 
           style={styles.heroVideo}
           contentFit="cover"
-          allowsFullscreen={true}
           nativeControls={false}
         />
 

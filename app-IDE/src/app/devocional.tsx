@@ -16,12 +16,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+type Devotional = { id: string; date: string; title: string; content: string; };
+
 export default function DevocionalScreen() {
   const router = useRouter();
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [devotionals, setDevotionals] = useState([]);
+  const [devotionals, setDevotionals] = useState<Devotional[]>([]);
 
   const handleSave = () => {
     if (!title.trim() || !content.trim()) return;
@@ -38,7 +40,7 @@ export default function DevocionalScreen() {
     setContent('');
   };
 
-  const handleShare = async (devotional) => {
+  const handleShare = async (devotional: Devotional) => {
     try {
       await Share.share({
         message: `${devotional.date} - ${devotional.title}\n\n${devotional.content}`,
@@ -48,7 +50,7 @@ export default function DevocionalScreen() {
     }
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: Devotional }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={{ flex: 1, paddingRight: 10 }}>

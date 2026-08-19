@@ -17,7 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
@@ -156,20 +156,40 @@ export default function AuthScreen() {
       const user = userCredential.user;
       console.log('Usuário criado com sucesso no Auth! UID:', user.uid);
 
-      console.log('Tentando salvar no Firestore...');
+      console.log('Tentando salvar/atualizar no Firestore...');
       // Envolve a chamada do Firestore em um Promise.race para evitar hang infinito (timeout de 8s)
-      const firestorePromise = setDoc(doc(db, 'users', user.uid), {
-        username: username.trim().toLowerCase(),
-        email: email.trim().toLowerCase(),
-        createdAt: new Date(),
-      });
+      const firestorePromise = (async () => {
+        const finalEmail = email.trim().toLowerCase();
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', finalEmail));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          // Cenário A: Usuário já existe (cadastrado pelo admin) - Mesclagem
+          const existingDocId = querySnapshot.docs[0].id;
+          await updateDoc(doc(db, 'users', existingDocId), {
+            uid: user.uid,
+            acessoApp: true,
+            username: username.trim().toLowerCase(),
+          });
+          console.log('Mesclagem de conta realizada com sucesso!');
+        } else {
+          // Cenário B: Usuário novo - Criação Normal
+          await setDoc(doc(db, 'users', user.uid), {
+            username: username.trim().toLowerCase(),
+            email: finalEmail,
+            acessoApp: true,
+            createdAt: new Date(),
+          });
+          console.log('Nova conta salva no Firestore com sucesso!');
+        }
+      })();
       
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('FIRESTORE_TIMEOUT')), 8000)
       );
 
       await Promise.race([firestorePromise, timeoutPromise]);
-      console.log('Salvo no Firestore com sucesso!');
 
       // Desloga o usuário imediatamente para impedir o login automático
       await signOut(auth);

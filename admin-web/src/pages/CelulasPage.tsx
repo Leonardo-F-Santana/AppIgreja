@@ -74,6 +74,7 @@ interface ModalFormProps {
 const FORM_VAZIO: FormCelula = {
   nome: '',
   lider: '',
+  whatsappLider: '',
   diaSemana: 'Quarta-feira',
   horario: '20:00',
   endereco: '',
@@ -98,6 +99,7 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
     await onSalvar({
       nome: form.nome.trim(),
       lider: form.lider.trim(),
+      whatsappLider: form.whatsappLider.trim(),
       diaSemana: form.diaSemana,
       horario: form.horario,
       endereco: form.endereco.trim(),
@@ -158,6 +160,19 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
               placeholder="Ex: João e Maria Silva"
               required
               maxLength={80}
+              className={inputClass}
+            />
+          </div>
+
+          {/* WhatsApp do Líder */}
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>WhatsApp do Líder (com DDD)</label>
+            <input
+              type="text"
+              value={form.whatsappLider}
+              onChange={(e) => set('whatsappLider', e.target.value)}
+              placeholder="(99) 99999-9999"
+              maxLength={20}
               className={inputClass}
             />
           </div>
@@ -550,6 +565,7 @@ export default function CelulasPage() {
           inicial={{
             nome: modal.celula.nome,
             lider: modal.celula.lider,
+            whatsappLider: modal.celula.whatsappLider,
             diaSemana: modal.celula.diaSemana,
             horario: modal.celula.horario,
             endereco: modal.celula.endereco,

@@ -37,6 +37,7 @@ export interface Celula {
   id: string;
   nome: string;
   lider: string;
+  whatsappLider: string;
   diaSemana: DiaSemana;
   horario: string;  // "HH:MM"
   endereco: string;
@@ -47,6 +48,7 @@ export interface Celula {
 export interface CriarCelulaPayload {
   nome: string;
   lider: string;
+  whatsappLider: string;
   diaSemana: DiaSemana;
   horario: string;
   endereco: string;
@@ -109,6 +111,7 @@ export function ouvirCelulas(
           id: docSnap.id,
           nome: data.nome ?? "",
           lider: data.lider ?? "",
+          whatsappLider: data.whatsappLider ?? "",
           diaSemana: data.diaSemana ?? "Quarta-feira",
           horario: data.horario ?? "",
           endereco: data.endereco ?? "",

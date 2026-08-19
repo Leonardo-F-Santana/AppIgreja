@@ -30,6 +30,7 @@ interface Celula {
   id: string;
   nome: string;
   lider: string;
+  whatsappLider?: string;
   diaSemana: string;
   horario: string;
   endereco: string;
@@ -74,12 +75,19 @@ function CelulaCard({ celula, corIndex }: CelulaCardProps) {
   const iniciais = getIniciais(celula.nome);
 
   const handleWhatsApp = () => {
-    // TODO: Adicionar número de telefone do líder ao documento Firestore
-    Alert.alert(
-      'Contactar Célula',
-      `Para participar da ${celula.nome}, contacte o líder ${celula.lider} diretamente.`,
-      [{ text: 'OK' }]
-    );
+    if (!celula.whatsappLider) {
+      Alert.alert("Atenção", "O número do líder ainda não foi cadastrado.");
+      return;
+    }
+
+    const apenasNumeros = celula.whatsappLider.replace(/\D/g, '');
+    const numeroFormatado = (apenasNumeros.length === 10 || apenasNumeros.length === 11) 
+      ? `55${apenasNumeros}` 
+      : apenasNumeros;
+
+    Linking.openURL(`whatsapp://send?phone=${numeroFormatado}`).catch(() => {
+      Alert.alert('Atenção', 'Não foi possível abrir o WhatsApp. Certifique-se de que o aplicativo está instalado.');
+    });
   };
 
   const handleVerMapa = () => {
@@ -239,6 +247,7 @@ export default function CelulasScreen() {
             id: doc.id,
             nome: d.nome ?? '',
             lider: d.lider ?? '',
+            whatsappLider: d.whatsappLider ?? '',
             diaSemana: d.diaSemana ?? '',
             horario: d.horario ?? '',
             endereco: d.endereco ?? '',

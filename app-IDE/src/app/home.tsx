@@ -151,7 +151,7 @@ export default function HomeScreen() {
     outputRange: [1, 0],
   });
 
-  const toggleProfileMenu = (open) => {
+  const toggleProfileMenu = (open: boolean) => {
     if (open) {
       setProfileMenuVisible(true);
       Animated.spring(slideAnim, {
@@ -282,7 +282,7 @@ export default function HomeScreen() {
   }, []);
 
   // ─── Renderização de Ícones ───────────────────────────────────────────────
-  const renderIcon = (family: string, name: any, size = 24, color = '#FFFFFF') => {
+  const renderIcon = (family: string | undefined, name: any, size = 24, color = '#FFFFFF') => {
     switch (family) {
       case 'FontAwesome5': return <FontAwesome5 name={name} size={size} color={color} />;
       case 'Feather': return <Feather name={name} size={size} color={color} />;
@@ -293,7 +293,7 @@ export default function HomeScreen() {
   };
 
   // ─── Componente: Bento Card ───────────────────────────────────────────────
-  const BentoCard = ({ title, subtitle, icon, family, route, isLarge, onPressOverride, color = '#4ade80' }) => {
+  const BentoCard = ({ title, subtitle, icon, family, route, isLarge, onPressOverride, color = '#4ade80' }: { title: string, subtitle?: string, icon: string, family?: string, route?: string, isLarge?: boolean, onPressOverride?: () => void, color?: string }) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
 
     const onPressIn = () => {
@@ -338,7 +338,7 @@ export default function HomeScreen() {
   };
 
   // ─── Componente: Card Horizontal (Explorar Mais) ──────────────────────────
-  const AnimatedMoreCard = ({ item, color }) => {
+  const AnimatedMoreCard = ({ item, color }: { item: any, color: string }) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
 
     const onPressIn = () => {

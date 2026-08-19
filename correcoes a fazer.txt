@@ -1,0 +1,13 @@
+Criar a pagina de mídias da igreja
+
+fazer ou um app separado ou criar um login especial para CADASTRO DE VISITANTES
+
+criar um menu onde os visitantes cadastrados apareçam no painel admin
+
+retirar do menu do app minhas doações
+
+no menu do app, configurar a opção receber notificações
+
+implementar alterar a senha no app
+
+colocar o contato ou fale com a secretaria da igreja no app

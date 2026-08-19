@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, Bell, Heart, LogOut, 
-  Settings, Users, User, HandHeart, Menu, X 
+  Settings, Users, User, HandHeart, Menu, X, Wallet
 } from 'lucide-react';
 
 export default function MainLayout() {
@@ -15,6 +15,7 @@ export default function MainLayout() {
     { path: '/celulas', icon: <Users size={20} />, label: 'Células' },
     { path: '/avisos', icon: <Bell size={20} />, label: 'Avisos' },
     { path: '/doacoes', icon: <Heart size={20} />, label: 'Doações' },
+    { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro' },
     { path: '/pedidos', icon: <HandHeart size={20} />, label: 'Pedidos de Oração' },
     { path: '/configuracoes', icon: <Settings size={20} />, label: 'Configurações' },
   ];

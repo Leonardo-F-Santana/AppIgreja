@@ -139,7 +139,7 @@ export default function TabLayout() {
               shadowOpacity: 1,
               shadowRadius: 30,
               elevation: 15, // DropShadow (Android)
-            }}
+            } as any}
           />
         </Animated.View>
       )}

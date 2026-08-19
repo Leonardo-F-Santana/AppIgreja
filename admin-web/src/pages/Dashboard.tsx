@@ -5,7 +5,7 @@ import { criarAviso, ouvirUltimosAvisos, type Prioridade, type Aviso } from '../
 import { ouvirResumoDashboard, type DashboardResumo } from '../services/dashboardService';
 import { ouvirProximosEventos, type Evento } from '../services/eventosService';
 import { ouvirCelulas, type Celula } from '../services/celulasService';
-import { Timestamp, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { Timestamp, doc, setDoc, onSnapshot, collection, query } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -175,6 +175,10 @@ export default function Dashboard() {
   const [metaAnual, setMetaAnual] = useState<number>(50);
   const [animateBars, setAnimateBars] = useState(false);
 
+  // Estados Financeiros
+  const [saldoDashboard, setSaldoDashboard] = useState<number>(0);
+  const [loadingFinanceiro, setLoadingFinanceiro] = useState(true);
+
   useEffect(() => {
     const timer = setTimeout(() => setAnimateBars(true), 150);
     return () => clearTimeout(timer);
@@ -219,6 +223,26 @@ export default function Dashboard() {
         setMetaAnual(50);
       }
     });
+    return () => unsubscribe();
+  }, []);
+
+  // Buscar Transações para calcular Saldo em Caixa
+  useEffect(() => {
+    const q = query(collection(db, 'transacoes'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let saldoTotal = 0;
+      snapshot.forEach(doc => {
+        const t = doc.data();
+        if (t.tipo === 'entrada') saldoTotal += t.valor;
+        if (t.tipo === 'saida') saldoTotal -= t.valor;
+      });
+      setSaldoDashboard(saldoTotal);
+      setLoadingFinanceiro(false);
+    }, (error) => {
+      console.error("Erro ao buscar transações no dashboard:", error);
+      setLoadingFinanceiro(false);
+    });
+
     return () => unsubscribe();
   }, []);
 
@@ -311,12 +335,14 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Card 2: Dízimos (Estático) */}
+          {/* Card 2: Saldo em Caixa (Dinâmico) */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
-            <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Dízimos &amp; Ofertas</h3>
+            <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Saldo em Caixa</h3>
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-3xl font-bold text-gray-900">R$ 12.450</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {loadingFinanceiro ? 'A calcular...' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(saldoDashboard)}
+                </p>
                 <p className="text-xs font-bold text-emerald-600 mt-2 bg-emerald-50 w-max px-2.5 py-1 rounded-full">+5%</p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
