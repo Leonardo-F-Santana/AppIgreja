@@ -11,3 +11,5 @@ no menu do app, configurar a opção receber notificações
 implementar alterar a senha no app
 
 colocar o contato ou fale com a secretaria da igreja no app
+
+criar algo relacionado ao aniversario, lembrete ou destaque pro aniversariante do dia!
