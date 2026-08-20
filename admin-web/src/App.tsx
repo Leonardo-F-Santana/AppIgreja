@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
@@ -10,28 +12,40 @@ import PedidosPage from './pages/PedidosPage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
 import MembrosPage from './pages/MembrosPage';
 import Financeiro from './pages/Financeiro';
+import Equipe from './pages/Equipe';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-        {/* Rotas protegidas envelopadas pelo MainLayout */}
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="avisos" element={<Avisos />} />
-          <Route path="eventos" element={<EventosPage />} />
-          <Route path="celulas" element={<CelulasPage />} />
-          <Route path="doacoes" element={<DoacoesPage />} />
-          <Route path="pedidos" element={<PedidosPage />} />
-          <Route path="configuracoes" element={<ConfiguracoesPage />} />
-          <Route path="membros" element={<MembrosPage />} />
-          <Route path="financeiro" element={<Financeiro />} />
-        </Route>
-      </Routes>
-    </Router>
+          {/* Rotas protegidas envelopadas pelo MainLayout */}
+          <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="avisos" element={<Avisos />} />
+            <Route path="eventos" element={<EventosPage />} />
+            <Route path="celulas" element={<CelulasPage />} />
+            <Route path="doacoes" element={<DoacoesPage />} />
+            <Route path="pedidos" element={<PedidosPage />} />
+            <Route path="configuracoes" element={<ConfiguracoesPage />} />
+            <Route path="membros" element={<MembrosPage />} />
+            <Route path="financeiro" element={
+              <ProtectedRoute allowedRoles={['admin', 'tesouraria']}>
+                <Financeiro />
+              </ProtectedRoute>
+            } />
+            <Route path="equipe" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Equipe />
+              </ProtectedRoute>
+            } />
+          </Route>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

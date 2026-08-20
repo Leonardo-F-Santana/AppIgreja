@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // Configuração do Firebase — projeto ministerioide
@@ -17,5 +17,14 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Configurar persistência local para evitar a necessidade de logins repetidos
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("Persistência do Firebase configurada (browserLocalPersistence).");
+  })
+  .catch((error) => {
+    console.error("Erro ao configurar persistência do Firebase Auth:", error);
+  });
 
 export default app;

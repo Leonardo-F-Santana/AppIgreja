@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, Bell, Heart, LogOut, 
-  Settings, Users, User, HandHeart, Menu, X, Wallet
+  Settings, Users, User, HandHeart, Menu, X, Wallet, ShieldCheck
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function MainLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const menuItems = [
     { path: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
@@ -14,11 +17,17 @@ export default function MainLayout() {
     { path: '/membros', icon: <User size={20} />, label: 'Membros' },
     { path: '/celulas', icon: <Users size={20} />, label: 'Células' },
     { path: '/avisos', icon: <Bell size={20} />, label: 'Avisos' },
-    { path: '/doacoes', icon: <Heart size={20} />, label: 'Doações' },
-    { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro' },
+    { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro', requiredRoles: ['admin', 'tesouraria'] },
     { path: '/pedidos', icon: <HandHeart size={20} />, label: 'Pedidos de Oração' },
     { path: '/configuracoes', icon: <Settings size={20} />, label: 'Configurações' },
+    { path: '/equipe', icon: <ShieldCheck size={20} />, label: 'Equipe', requiredRoles: ['admin'] },
   ];
+
+  // Filtra itens do menu com base no role do utilizador
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (!item.requiredRoles) return true;
+    return user?.role && item.requiredRoles.includes(user.role);
+  });
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 relative">
@@ -40,7 +49,14 @@ export default function MainLayout() {
         <div className="p-6 pb-8 flex justify-between items-start">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl font-bold tracking-tight">MINISTÉRIO IDE</h2>
-            <span className="text-[10px] font-bold bg-emerald-800/60 text-emerald-300 py-1 px-2 rounded w-max uppercase tracking-wider">Admin</span>
+            <div className="mt-1 flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-emerald-100 truncate max-w-[180px]" title={user?.nome || user?.email || ''}>
+                {user?.nome || user?.email?.split('@')[0] || 'Administrador'}
+              </span>
+              <span className="text-[10px] font-bold bg-emerald-800/60 text-emerald-300 py-0.5 px-2 rounded w-max uppercase tracking-wider">
+                {user?.role || 'Admin'}
+              </span>
+            </div>
           </div>
           <button 
             className="md:hidden text-emerald-300 hover:text-white"
@@ -53,7 +69,7 @@ export default function MainLayout() {
         <nav className="flex-1 px-4 overflow-y-auto">
           <p className="text-[10px] font-bold text-emerald-400/60 mb-4 px-3 tracking-widest uppercase">Menu Principal</p>
           <ul className="flex flex-col gap-1.5">
-            {menuItems.map((item) => (
+            {visibleMenuItems.map((item) => (
               <li key={item.path}>
                 <NavLink 
                   to={item.path}
@@ -69,7 +85,13 @@ export default function MainLayout() {
         </nav>
 
         <div className="p-4 border-t border-emerald-800/40">
-          <button className="flex items-center gap-3 px-3 py-3 w-full rounded-xl text-sm font-medium text-red-300/90 hover:bg-red-500/10 transition-colors">
+          <button 
+            onClick={async () => {
+              await signOut();
+              navigate('/login');
+            }}
+            className="flex items-center gap-3 px-3 py-3 w-full rounded-xl text-sm font-medium text-red-300/90 hover:bg-red-500/10 transition-colors"
+          >
             <LogOut size={20} />
             <span>Sair</span>
           </button>
