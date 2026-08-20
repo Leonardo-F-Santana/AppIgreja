@@ -21,7 +21,7 @@ export default function MainLayout() {
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 relative">
+    <div className="flex h-screen overflow-hidden bg-gray-100 relative">
       
       {/* Overlay escuro p/ quando menu mobile estiver aberto */}
       {isMobileMenuOpen && (
@@ -77,7 +77,7 @@ export default function MainLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden w-full">
+      <main className="flex-1 flex flex-col h-full overflow-hidden w-full bg-gray-100">
         {/* Topbar visível apenas no Mobile */}
         <div className="md:hidden bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
           <div className="flex flex-col">

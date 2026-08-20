@@ -696,16 +696,10 @@ export default function HomeScreen() {
 
             {/* Drawer Menu List */}
             <View style={styles.drawerList}>
-              <DrawerMenuItem icon="user" title="Editar Perfil" onPress={() => { toggleProfileMenu(false); router.push('/perfil'); }} />
+              <DrawerMenuItem icon="user" title="Meu Perfil" onPress={() => { toggleProfileMenu(false); router.push('/perfil'); }} />
               <View style={styles.drawerDivider} />
 
-              <DrawerMenuItem icon="settings" title="Configurações" onPress={() => { toggleProfileMenu(false); router.push('/perfil'); }} />
-              <View style={styles.drawerDivider} />
-
-              <DrawerMenuItem icon="heart" title="Minhas Doações" onPress={() => { toggleProfileMenu(false); router.push('/doacoes'); }} />
-              <View style={styles.drawerDivider} />
-
-              <DrawerMenuItem icon="bell" title="Notificações" />
+              <DrawerMenuItem icon="settings" title="Configurações" onPress={() => { toggleProfileMenu(false); router.push('/configuracoes'); }} />
             </View>
 
             {/* Drawer Footer */}

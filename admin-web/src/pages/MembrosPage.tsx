@@ -12,6 +12,7 @@ import {
   type Membro,
   type MembroPayload,
 } from '../services/membrosService';
+import { exportToCSV } from '../utils/exportCSV';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 
@@ -61,45 +62,6 @@ function formatarData(ts: Membro['createdAt']): string {
   });
 }
 
-function exportarMembrosCSV(membros: Membro[]) {
-  if (membros.length === 0) {
-    alert("Não há membros para exportar.");
-    return;
-  }
-
-  // Cabeçalhos com ponto e vírgula para compatibilidade com o Excel em pt-BR
-  const headers = ['Nome', 'E-mail', 'Telefone', 'Acesso ao App', 'Nível de Acesso', 'Data de Cadastro'];
-  const linhas = [headers.join(';')];
-
-  membros.forEach(m => {
-    const nomeStr = `"${m.username.replace(/"/g, '""')}"`;
-    const emailStr = `"${m.email}"`;
-    const telefoneStr = `"${m.telefone || ''}"`;
-    const acessoStr = m.acessoApp ? '"Sim"' : '"Não"';
-    const roleStr = m.role === 'admin' ? '"Administrador"' : '"Membro"';
-    
-    // Formatar data para ser mais legível (dd/mm/aaaa) para o Excel
-    let dataStr = '""';
-    if (m.createdAt) {
-      const date = typeof m.createdAt.toDate === 'function' ? m.createdAt.toDate() : new Date(m.createdAt as any);
-      dataStr = `"${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}"`;
-    }
-
-    linhas.push([nomeStr, emailStr, telefoneStr, acessoStr, roleStr, dataStr].join(';'));
-  });
-
-  const csvContent = "\uFEFF" + linhas.join('\n'); // Adicionar BOM
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `membros_${new Date().getTime()}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 // ─── Classes reutilizáveis do form ────────────────────────────────────────────
 
 const inputClass =
@@ -123,6 +85,7 @@ const FORM_VAZIO: FormMembro = {
   username: '',
   email: '',
   telefone: '',
+  dataNascimento: '',
   role: 'membro',
 };
 
@@ -141,6 +104,7 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
       username: form.username.trim(),
       email: form.email?.trim() || '',
       telefone: form.telefone?.trim() || '',
+      dataNascimento: form.dataNascimento || '',
       role: form.role,
     });
   };
@@ -208,17 +172,27 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className={labelClass}>Nível de Acesso</label>
-              <select
-                value={form.role}
-                onChange={(e) => set('role', e.target.value)}
-                required
+              <label className={labelClass}>Data de Nascimento</label>
+              <input
+                type="date"
+                value={form.dataNascimento || ''}
+                onChange={(e) => set('dataNascimento', e.target.value)}
                 className={inputClass}
-              >
-                <option value="membro">Membro</option>
-                <option value="admin">Administrador</option>
-              </select>
+              />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Nível de Acesso</label>
+            <select
+              value={form.role}
+              onChange={(e) => set('role', e.target.value)}
+              required
+              className={inputClass}
+            >
+              <option value="membro">Membro</option>
+              <option value="admin">Administrador</option>
+            </select>
           </div>
 
           <div className="flex gap-3 pt-2 flex-shrink-0 mt-2">
@@ -454,11 +428,21 @@ export default function MembrosPage() {
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => exportarMembrosCSV(membrosFiltrados)}
-              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"
+              onClick={() => {
+                const dadosFormatados = membrosFiltrados.map(m => ({
+                  'Nome': m.username,
+                  'E-mail': m.email,
+                  'Telefone': m.telefone || '',
+                  'Acesso ao App': m.acessoApp ? 'Sim' : 'Não',
+                  'Nível de Acesso': m.role === 'admin' ? 'Administrador' : 'Membro',
+                  'Data de Cadastro': m.createdAt
+                }));
+                exportToCSV(dadosFormatados, "relatorio_membros.csv");
+              }}
+              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors shadow-sm whitespace-nowrap justify-center"
             >
               <Download size={16} />
-              Exportar Excel/CSV
+              Exportar CSV
             </button>
             <button
               onClick={() => setModal({ tipo: 'criar' })}

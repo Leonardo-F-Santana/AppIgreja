@@ -24,6 +24,7 @@ interface UserData {
   email: string;
   role: string;
   createdAt: Timestamp | null;
+  receberNotificacoes?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -92,9 +93,10 @@ interface MenuItemProps {
   iconColor?: string;
   isDestructive?: boolean;
   onPress?: () => void;
+  rightElement?: React.ReactNode;
 }
 
-function MenuItem({ icon, title, subtitle, iconColor = '#FFFFFF', isDestructive = false, onPress }: MenuItemProps) {
+function MenuItem({ icon, title, subtitle, iconColor = '#FFFFFF', isDestructive = false, onPress, rightElement }: MenuItemProps) {
   const color = isDestructive ? '#ef4444' : iconColor;
 
   return (
@@ -102,6 +104,7 @@ function MenuItem({ icon, title, subtitle, iconColor = '#FFFFFF', isDestructive 
       style={styles.menuItem}
       activeOpacity={0.7}
       onPress={onPress}
+      disabled={!onPress}
     >
       <View style={[styles.menuIconCircle, { backgroundColor: isDestructive ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.05)' }]}>
         <Feather name={icon as any} size={20} color={color} />
@@ -110,7 +113,7 @@ function MenuItem({ icon, title, subtitle, iconColor = '#FFFFFF', isDestructive 
         <Text style={[styles.menuTitle, isDestructive && { color: '#ef4444' }]}>{title}</Text>
         {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
       </View>
-      <Feather name="chevron-right" size={18} color={isDestructive ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.2)'} />
+      {rightElement ? rightElement : <Feather name="chevron-right" size={18} color={isDestructive ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.2)'} />}
     </TouchableOpacity>
   );
 }
@@ -121,7 +124,6 @@ export default function PerfilScreen() {
   const router = useRouter();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
   // ─── Buscar dados do utilizador ─────────────────────────────────────────
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -142,6 +144,7 @@ export default function PerfilScreen() {
             email: data.email ?? currentUser!.email ?? '',
             role: data.role ?? 'membro',
             createdAt: data.createdAt ?? null,
+            receberNotificacoes: data.receberNotificacoes ?? true,
           });
         } else {
           // Documento não existe no Firestore, usar dados do Auth
@@ -150,6 +153,7 @@ export default function PerfilScreen() {
             email: currentUser!.email ?? '',
             role: 'membro',
             createdAt: null,
+            receberNotificacoes: true,
           });
         }
       } catch (error) {
@@ -160,6 +164,7 @@ export default function PerfilScreen() {
           email: currentUser!.email ?? '',
           role: 'membro',
           createdAt: null,
+          receberNotificacoes: true,
         });
       } finally {
         setIsLoading(false);
@@ -303,35 +308,6 @@ export default function PerfilScreen() {
                 onPress={() => router.push('/editar-perfil')}
               />
 
-              <View style={styles.cardDivider} />
-
-              <MenuItem
-                icon="lock"
-                title="Alterar Senha"
-                subtitle="Redefinir a sua senha de acesso"
-                iconColor="#f97316"
-                onPress={() => {
-                  Alert.alert(
-                    'Em Breve',
-                    'A funcionalidade de alteração de senha estará disponível em breve!'
-                  );
-                }}
-              />
-
-              <View style={styles.cardDivider} />
-
-              <MenuItem
-                icon="bell"
-                title="Notificações"
-                subtitle="Gerenciar alertas e avisos"
-                iconColor="#38bdf8"
-                onPress={() => {
-                  Alert.alert(
-                    'Em Breve',
-                    'As configurações de notificações estarão disponíveis em breve!'
-                  );
-                }}
-              />
             </View>
           </View>
 

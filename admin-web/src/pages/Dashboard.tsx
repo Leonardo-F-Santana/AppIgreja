@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ArrowRight, X, Bell, AlertTriangle, Megaphone, CalendarPlus, Users, HeartHandshake, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { criarAviso, ouvirUltimosAvisos, type Prioridade, type Aviso } from '../services/avisosService';
@@ -162,6 +162,7 @@ function formatEventDate(d: any) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'erro' } | null>(null);
   
@@ -177,7 +178,12 @@ export default function Dashboard() {
 
   // Estados Financeiros
   const [saldoDashboard, setSaldoDashboard] = useState<number>(0);
+  const [transacoes, setTransacoes] = useState<any[]>([]);
   const [loadingFinanceiro, setLoadingFinanceiro] = useState(true);
+
+  // Estados Membros (Aniversariantes)
+  const [membros, setMembros] = useState<any[]>([]);
+  const [loadingMembros, setLoadingMembros] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setAnimateBars(true), 150);
@@ -231,12 +237,15 @@ export default function Dashboard() {
     const q = query(collection(db, 'transacoes'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let saldoTotal = 0;
+      const listaTransacoes: any[] = [];
       snapshot.forEach(doc => {
         const t = doc.data();
+        listaTransacoes.push({ id: doc.id, ...t });
         if (t.tipo === 'entrada') saldoTotal += t.valor;
         if (t.tipo === 'saida') saldoTotal -= t.valor;
       });
       setSaldoDashboard(saldoTotal);
+      setTransacoes(listaTransacoes);
       setLoadingFinanceiro(false);
     }, (error) => {
       console.error("Erro ao buscar transações no dashboard:", error);
@@ -245,6 +254,61 @@ export default function Dashboard() {
 
     return () => unsubscribe();
   }, []);
+
+
+
+  // Buscar Membros para Aniversariantes
+  useEffect(() => {
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const lista: any[] = [];
+      snapshot.forEach(doc => {
+        lista.push({ id: doc.id, ...doc.data() });
+      });
+      setMembros(lista);
+      setLoadingMembros(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Calcular Aniversariantes do Mês
+  const aniversariantesDoMes = useMemo(() => {
+    const mesAtual = new Date().getMonth();
+    const lista = membros.filter(m => {
+      if (!m.dataNascimento) return false;
+      let mesNasc = -1;
+      let diaNasc = -1;
+      
+      if (typeof m.dataNascimento === 'string') {
+        const parts = m.dataNascimento.split('/');
+        if (parts.length >= 2) {
+          diaNasc = parseInt(parts[0], 10);
+          mesNasc = parseInt(parts[1], 10) - 1;
+        } else if (m.dataNascimento.includes('-')) {
+          const parts = m.dataNascimento.split('-');
+          if (parts.length >= 3) {
+            mesNasc = parseInt(parts[1], 10) - 1;
+            diaNasc = parseInt(parts[2], 10);
+          }
+        }
+      } else if (m.dataNascimento instanceof Timestamp || m.dataNascimento?.toDate) {
+        const date = m.dataNascimento.toDate ? m.dataNascimento.toDate() : new Date(m.dataNascimento.seconds * 1000);
+        mesNasc = date.getMonth();
+        diaNasc = date.getDate();
+      } else if (m.dataNascimento instanceof Date) {
+        mesNasc = m.dataNascimento.getMonth();
+        diaNasc = m.dataNascimento.getDate();
+      }
+
+      if (mesNasc === mesAtual) {
+        m._diaNascTemp = diaNasc;
+        return true;
+      }
+      return false;
+    });
+
+    return lista.sort((a, b) => (a._diaNascTemp || 0) - (b._diaNascTemp || 0));
+  }, [membros]);
 
   const handleEditarMeta = async () => {
     const novaMetaStr = window.prompt('Digite a nova meta anual de células:', metaAnual.toString());
@@ -297,21 +361,55 @@ export default function Dashboard() {
         <ModalAviso onClose={() => setIsModalOpen(false)} onPublicar={handlePublicar} isLoading={isLoading} />
       )}
 
-      <div className="flex flex-col gap-8 max-w-[1400px] mx-auto pb-10">
+      <div className="w-full flex flex-col gap-8 max-w-[1400px] mx-auto pb-10">
 
         {/* 1. Header (Topo) */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
             <p className="text-gray-500 text-sm mt-1 font-medium">Bem-vindo, Leonardo. Aqui está o resumo de hoje.</p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-emerald-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2"
-          >
-            <Bell size={15} />
-            Publicar Aviso
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setMenuAcoesAberto(!menuAcoesAberto)}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors shadow-sm"
+            >
+              <span>⚡ Ações Rápidas</span>
+            </button>
+
+            {menuAcoesAberto && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl z-50 ring-1 ring-black ring-opacity-5 flex flex-col py-1 border border-gray-100">
+                <button
+                  onClick={() => { setIsModalOpen(true); setMenuAcoesAberto(false); }}
+                  className="text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
+                >
+                  <Megaphone size={16} className="text-emerald-600" />
+                  Publicar Aviso
+                </button>
+                <button
+                  onClick={() => { navigate('/eventos'); setMenuAcoesAberto(false); }}
+                  className="text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
+                >
+                  <CalendarPlus size={16} className="text-emerald-600" />
+                  Novo Evento
+                </button>
+                <button
+                  onClick={() => { navigate('/celulas'); setMenuAcoesAberto(false); }}
+                  className="text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
+                >
+                  <Users size={16} className="text-emerald-600" />
+                  Nova Célula
+                </button>
+                <button
+                  onClick={() => { navigate('/pedidos'); setMenuAcoesAberto(false); }}
+                  className="text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
+                >
+                  <HeartHandshake size={16} className="text-emerald-600" />
+                  Pedidos de Oração
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
         {/* 2. Linha 1 - Métricas Rápidas */}
@@ -398,7 +496,7 @@ export default function Dashboard() {
         </div>
 
         {/* 3. Linha 2 - Análise Detalhada */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card Esquerdo: Próximas Atividades */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col h-full min-h-[300px]">
             <div className="flex justify-between items-center mb-6">
@@ -428,13 +526,13 @@ export default function Dashboard() {
                 })
               )}
             </div>
-            <button className="w-full mt-4 py-2.5 rounded-xl border border-gray-100 text-gray-900 font-bold text-xs hover:bg-gray-50 transition-colors">
+            <button onClick={() => navigate('/eventos')} className="w-full mt-4 py-2.5 rounded-xl border border-gray-100 text-gray-900 font-bold text-xs hover:bg-gray-50 transition-colors">
               Ver Calendário
             </button>
           </div>
 
           {/* Card Central: Células */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-full">
             <h3 className="text-gray-900 text-sm font-bold mb-4">Células por Dia da Semana</h3>
             {loadingCelulas ? (
               <div className="flex-1 flex items-center justify-center min-h-[160px]">
@@ -475,7 +573,7 @@ export default function Dashboard() {
                 </ul>
               </>
             )}
-            <button className="w-full mt-auto py-2.5 rounded-xl border border-gray-200 text-gray-900 font-bold text-xs hover:bg-gray-50 transition-colors">
+            <button onClick={() => navigate('/celulas')} className="w-full mt-auto py-2.5 rounded-xl border border-gray-200 text-gray-900 font-bold text-xs hover:bg-gray-50 transition-colors">
               Ver Detalhes
             </button>
           </div>
@@ -511,8 +609,62 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 4. Linha 3 - Status e Banners */}
+        {/* 4. Linha 3 - Bloco Inferior */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Card Aniversariantes do Mês */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col min-h-[180px] max-h-[350px]">
+            <h3 className="text-gray-900 text-sm font-bold mb-4 flex items-center gap-2">
+              🎂 Aniversariantes do Mês
+            </h3>
+            <div className="flex-1 overflow-y-auto pr-1">
+              {loadingMembros ? (
+                <div className="flex-1 flex items-center justify-center min-h-[100px]"><p className="text-xs text-gray-400">A carregar...</p></div>
+              ) : aniversariantesDoMes.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center min-h-[100px] text-center">
+                  <p className="text-xs text-gray-400 font-medium">Nenhum aniversariante para este mês.</p>
+                </div>
+              ) : (
+                <ul className="flex flex-col">
+                  {aniversariantesDoMes.map(m => {
+                    const diaAtual = new Date().getDate();
+                    const isHoje = parseInt(m._diaNascTemp) === diaAtual;
+                    const numeroLimpo = m.telefone ? m.telefone.replace(/\D/g, '') : '';
+                    const linkWhatsApp = numeroLimpo ? `https://wa.me/55${numeroLimpo}?text=${encodeURIComponent('Paz do Senhor! Passando para te desejar um feliz aniversário e que Deus te abençoe grandemente!')}` : '#';
+                    return (
+                      <li key={m.id} className={`flex items-center justify-between ${isHoje ? 'bg-amber-50 border border-amber-200 rounded-md p-2 mb-2 mt-1' : 'py-2.5 border-b border-gray-100 last:border-0'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs flex-shrink-0">
+                            {m.username ? m.username.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div>
+                            <div className="flex items-center">
+                              <p className="text-sm font-bold text-gray-900 leading-tight line-clamp-1" title={m.username}>{m.username || 'Sem Nome'}</p>
+                              {isHoje && (
+                                <span className="ml-2 text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">🎉 Hoje!</span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-medium text-gray-500 mt-0.5">Dia {m._diaNascTemp}</p>
+                          </div>
+                        </div>
+                        {numeroLimpo && (
+                          <button 
+                            onClick={() => window.open(linkWhatsApp, '_blank')}
+                            className="w-8 h-8 rounded-full bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors flex-shrink-0 ml-2"
+                            title="Enviar parabéns no WhatsApp"
+                          >
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" className="text-emerald-600">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+                            </svg>
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+
           {/* Barras Horizontais: Células (Dinâmico) */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-center min-h-[180px]">
             <h3 className="text-gray-900 text-sm font-bold mb-6">Status de Células</h3>
@@ -540,59 +692,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
-          {/* Banner CTA */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-900 to-emerald-800 rounded-3xl p-8 flex flex-col justify-between min-h-[180px] shadow-sm">
-            <div className="absolute -top-12 -right-12 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
-            <div className="absolute bottom-0 right-10 w-32 h-32 bg-emerald-400/10 rounded-full blur-xl"></div>
-            <div className="relative z-10 mb-4">
-              <h2 className="text-2xl font-bold text-white mb-2 leading-tight">Painel de<br/>Ações Rápidas</h2>
-              <p className="text-emerald-100/70 text-xs font-medium max-w-[80%]">Atalhos essenciais para gerenciar a comunidade.</p>
-            </div>
-            <div className="relative z-10 grid grid-cols-2 gap-3 mt-auto">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-colors p-3 rounded-2xl border border-white/5 text-white text-left group shadow-sm"
-              >
-                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-300 group-hover:scale-110 transition-transform">
-                  <Megaphone size={16} />
-                </div>
-                <span className="text-xs font-bold leading-tight">Publicar<br/>Aviso</span>
-              </button>
-
-              <button
-                onClick={() => navigate('/eventos')}
-                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-colors p-3 rounded-2xl border border-white/5 text-white text-left group shadow-sm"
-              >
-                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-300 group-hover:scale-110 transition-transform">
-                  <CalendarPlus size={16} />
-                </div>
-                <span className="text-xs font-bold leading-tight">Novo<br/>Evento</span>
-              </button>
-
-              <button
-                onClick={() => navigate('/celulas')}
-                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-colors p-3 rounded-2xl border border-white/5 text-white text-left group shadow-sm"
-              >
-                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-300 group-hover:scale-110 transition-transform">
-                  <Users size={16} />
-                </div>
-                <span className="text-xs font-bold leading-tight">Nova<br/>Célula</span>
-              </button>
-
-              <button
-                onClick={() => navigate('/pedidos')}
-                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 transition-colors p-3 rounded-2xl border border-white/5 text-white text-left group shadow-sm"
-              >
-                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-300 group-hover:scale-110 transition-transform">
-                  <HeartHandshake size={16} />
-                </div>
-                <span className="text-xs font-bold leading-tight">Pedidos de<br/>Oração</span>
-              </button>
-            </div>
-          </div>
         </div>
-
       </div>
     </>
   );

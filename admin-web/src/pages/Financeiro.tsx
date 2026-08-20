@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { 
   Wallet, TrendingUp, TrendingDown, Plus, X, 
   Search, FileText, Calendar as CalendarIcon, Tag, Download
 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { exportToCSV } from '../utils/exportCSV';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -32,42 +34,6 @@ function formatarData(ts: Timestamp | null): string {
   return date.toLocaleDateString('pt-BR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
-}
-
-function exportarFinanceiroCSV(transacoes: Transacao[]) {
-  if (transacoes.length === 0) {
-    alert("Não há dados para exportar.");
-    return;
-  }
-
-  // Cabeçalhos com ponto e vírgula
-  const headers = ['Tipo', 'Descrição', 'Categoria', 'Data', 'Valor'];
-  const linhas = [headers.join(';')];
-
-  // Formatar cada linha
-  transacoes.forEach(t => {
-    const tipoStr = t.tipo === 'entrada' ? 'Entrada' : 'Saída';
-    const descStr = `"${t.descricao.replace(/"/g, '""')}"`; // Escapar aspas duplas
-    const catStr = `"${t.categoria}"`;
-    const dataStr = formatarData(t.data);
-    
-    // Valor sem "R$" e com vírgula para decimais no Excel BR, ou apenas o número nativo dependendo da config
-    // Para excel BR, o ideal é número com vírgula no decimal, mas como float puro pode bastar, vamos converter ponto para vírgula
-    const valorStr = t.tipo === 'entrada' ? t.valor.toFixed(2).replace('.', ',') : '-' + t.valor.toFixed(2).replace('.', ',');
-
-    linhas.push([tipoStr, descStr, catStr, dataStr, valorStr].join(';'));
-  });
-
-  const csvContent = "\uFEFF" + linhas.join('\n'); // \uFEFF para UTF-8 BOM
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `transacoes_${new Date().getTime()}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
 
 // ─── Classes Form ────────────────────────────────────────────────────────────
@@ -126,6 +92,35 @@ export default function Financeiro() {
       totalSaidas: saidas,
       saldoAtual: entradas - saidas,
     };
+  }, [transacoes]);
+
+  // Processar dados do Fluxo de Caixa (Recharts)
+  const dadosGraficoFinanceiro = useMemo(() => {
+    if (!transacoes || transacoes.length === 0) return [];
+    
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const mapa = new Map<string, { mes: string; entradas: number; saidas: number; order: number }>();
+    
+    const hoje = new Date();
+    // Últimos 6 meses
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      const chave = `${d.getFullYear()}-${d.getMonth()}`;
+      mapa.set(chave, { mes: meses[d.getMonth()], entradas: 0, saidas: 0, order: d.getTime() });
+    }
+
+    transacoes.forEach(t => {
+      if (!t.data) return;
+      const date = typeof t.data.toDate === 'function' ? t.data.toDate() : new Date(t.data as any);
+      const chave = `${date.getFullYear()}-${date.getMonth()}`;
+      if (mapa.has(chave)) {
+        const item = mapa.get(chave)!;
+        if (t.tipo === 'entrada') item.entradas += t.valor;
+        if (t.tipo === 'saida') item.saidas += t.valor;
+      }
+    });
+
+    return Array.from(mapa.values()).sort((a, b) => a.order - b.order);
   }, [transacoes]);
 
   // ─── Filtragem ─────────────────────────────────────────────────────────────
@@ -233,6 +228,27 @@ export default function Financeiro() {
         </div>
       </div>
 
+      {/* Gráfico de Fluxo de Caixa */}
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-2">
+        <h2 className="text-lg font-bold text-gray-900 mb-6">Fluxo de Caixa (Últimos 6 Meses)</h2>
+        <div className="w-full h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={dadosGraficoFinanceiro} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+              <Tooltip 
+                cursor={{ fill: '#f8fafc' }} 
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+              />
+              <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold' }} />
+              <Bar dataKey="entradas" fill="#16a34a" name="Entradas" radius={[4, 4, 0, 0]} barSize={32} />
+              <Bar dataKey="saidas" fill="#dc2626" name="Saídas" radius={[4, 4, 0, 0]} barSize={32} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       {/* Tabela Section */}
       <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
         {/* Table Header Controls */}
@@ -254,11 +270,20 @@ export default function Financeiro() {
             </div>
             
             <button
-              onClick={() => exportarFinanceiroCSV(transacoesFiltradas)}
-              className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap"
+              onClick={() => {
+                const dadosFormatados = transacoesFiltradas.map(t => ({
+                  'Tipo': t.tipo === 'entrada' ? 'Entrada' : 'Saída',
+                  'Descrição': t.descricao,
+                  'Categoria': t.categoria,
+                  'Data': t.data,
+                  'Valor': t.tipo === 'entrada' ? t.valor : -t.valor
+                }));
+                exportToCSV(dadosFormatados, "relatorio_financeiro.csv");
+              }}
+              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors shadow-sm whitespace-nowrap justify-center"
             >
               <Download size={18} />
-              <span>Exportar Excel/CSV</span>
+              Exportar CSV
             </button>
 
             <button

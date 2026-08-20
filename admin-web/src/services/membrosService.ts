@@ -22,6 +22,7 @@ export interface Membro {
   email: string;
   role: string;
   telefone?: string;
+  dataNascimento?: string;
   acessoApp: boolean;
   createdAt: Timestamp | null;
 }
@@ -30,6 +31,7 @@ export interface MembroPayload {
   username: string;
   email?: string;
   telefone?: string;
+  dataNascimento?: string;
   role: string;
 }
 
@@ -108,6 +110,7 @@ export function ouvirMembros(
           email: data.email ?? "sem-email@ide.com",
           role: data.role ?? "membro", // Se não tiver role, assume 'membro'
           telefone: data.telefone ?? undefined,
+          dataNascimento: data.dataNascimento ?? undefined,
           acessoApp: data.acessoApp ?? true,
           createdAt: data.createdAt ?? null,
         };
@@ -128,6 +131,7 @@ export function ouvirMembros(
               email: data.email ?? "sem-email@ide.com",
               role: data.role ?? "membro",
               telefone: data.telefone ?? undefined,
+              dataNascimento: data.dataNascimento ?? undefined,
               acessoApp: data.acessoApp ?? true,
               createdAt: data.createdAt ?? null,
             };
