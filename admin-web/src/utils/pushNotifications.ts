@@ -40,8 +40,9 @@ export async function enviarNotificacaoPushEmMassa(
   }));
 
   try {
-    // Em desenvolvimento, usa o proxy do Vite (/api/push -> exp.host)
-    // Em produção, pode-se apontar para uma Cloud Function via variável de ambiente
+    // Em desenvolvimento (npm run dev): o proxy do Vite em vite.config.ts redireciona /api/push → exp.host
+    // Em produção (Vercel): a serverless function em /api/push.ts faz o proxy para exp.host
+    // Ambos os ambientes usam '/api/push' como endpoint, então o código funciona em ambos.
     const pushUrl = import.meta.env.VITE_EXPO_PUSH_URL || '/api/push';
 
     const response = await fetch(pushUrl, {
