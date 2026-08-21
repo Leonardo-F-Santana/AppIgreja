@@ -29,7 +29,7 @@ function Toast({ mensagem, tipo, onClose }: ToastProps) {
 
   return (
     <div className={`fixed top-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl text-white text-sm font-semibold
-      ${tipo === 'sucesso' ? 'bg-emerald-600' : 'bg-red-600'}`}
+      ${tipo === 'sucesso' ? 'bg-blue-600' : 'bg-red-600'}`}
     >
       {tipo === 'sucesso' ? <Heart size={16} /> : <X size={16} />}
       <span>{mensagem}</span>
@@ -56,8 +56,8 @@ function ToggleSwitch({ checked, onChange, disabled = false }: ToggleSwitchProps
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50
-        ${checked ? 'bg-emerald-500' : 'bg-gray-300'}`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50
+        ${checked ? 'bg-blue-500' : 'bg-gray-300'}`}
     >
       <span
         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
@@ -96,8 +96,8 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden my-auto">
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-100 p-2.5 rounded-xl">
-              <Heart size={18} className="text-emerald-700" />
+            <div className="bg-blue-100 p-2.5 rounded-xl">
+              <Heart size={18} className="text-blue-700" />
             </div>
             <h2 className="text-gray-900 font-bold text-lg">{titulo}</h2>
           </div>
@@ -116,7 +116,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
               placeholder="Ex: Dízimos, Missões..."
               required
               maxLength={100}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -128,7 +128,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
               placeholder="Descreva o propósito da arrecadação..."
               maxLength={200}
               rows={2}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
             />
           </div>
 
@@ -140,7 +140,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
                 onClick={() => setForm(f => ({ ...f, tipo: 'PIX' }))}
                 className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition-all
                   ${form.tipo === 'PIX'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
               >
                 <QrCode size={16} />
@@ -151,7 +151,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
                 onClick={() => setForm(f => ({ ...f, tipo: 'Transferência Bancária' }))}
                 className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition-all
                   ${form.tipo === 'Transferência Bancária'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
               >
                 <Landmark size={16} />
@@ -170,7 +170,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
               onChange={(e) => setForm(f => ({ ...f, chaveOuConta: e.target.value }))}
               placeholder={form.tipo === 'PIX' ? 'ex: celular, email, CPF...' : 'ex: Banco, Agência, Conta...'}
               required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -196,7 +196,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
             <button
               type="submit"
               disabled={isLoading || !form.titulo.trim() || !form.chaveOuConta.trim()}
-              className="flex-1 py-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl bg-blue-900 hover:bg-blue-700 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -389,7 +389,7 @@ export default function DoacoesPage() {
           </div>
           <button
             onClick={() => setModal({ tipo: 'criar' })}
-            className="bg-emerald-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2"
+            className="bg-blue-900 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2"
           >
             <Plus size={16} />
             Nova Conta/Campanha
@@ -404,7 +404,7 @@ export default function DoacoesPage() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por título ou chave..."
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
         </div>
@@ -412,7 +412,7 @@ export default function DoacoesPage() {
         {carregando ? (
           <div className="flex-1 flex items-center justify-center py-24">
             <div className="flex flex-col items-center gap-4 text-gray-400">
-              <svg className="animate-spin h-8 w-8 text-emerald-600" viewBox="0 0 24 24" fill="none">
+              <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
@@ -435,7 +435,7 @@ export default function DoacoesPage() {
             {!busca && (
               <button
                 onClick={() => setModal({ tipo: 'criar' })}
-                className="mt-2 bg-emerald-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors flex items-center gap-2"
+                className="mt-2 bg-blue-900 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors flex items-center gap-2"
               >
                 <Plus size={16} />
                 Nova Conta/Campanha
@@ -448,7 +448,7 @@ export default function DoacoesPage() {
               <div
                 key={doacao.id}
                 className={`bg-white rounded-2xl shadow-sm border-t-4 transition-shadow hover:shadow-md flex flex-col
-                  ${doacao.ativo ? 'border-t-emerald-500' : 'border-t-gray-300 opacity-80 grayscale-[20%]'}`}
+                  ${doacao.ativo ? 'border-t-blue-500' : 'border-t-gray-300 opacity-80 grayscale-[20%]'}`}
               >
                 {/* Header Card */}
                 <div className="p-6 flex-1">
@@ -462,7 +462,7 @@ export default function DoacoesPage() {
                       <div>
                         <h3 className="text-gray-900 font-bold text-base leading-tight">{doacao.titulo}</h3>
                         <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
-                          ${doacao.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}
+                          ${doacao.ativo ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}
                         >
                           {doacao.ativo ? 'Ativo' : 'Inativo'}
                         </span>
@@ -484,7 +484,7 @@ export default function DoacoesPage() {
                       <p className="text-gray-900 font-semibold text-sm truncate flex-1">{doacao.chaveOuConta}</p>
                       <button 
                         onClick={() => copiarChave(doacao.chaveOuConta)}
-                        className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex-shrink-0"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0"
                         title="Copiar chave"
                       >
                         <Copy size={14} />
@@ -508,7 +508,7 @@ export default function DoacoesPage() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setModal({ tipo: 'editar', doacao })}
-                      className="p-2 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Editar"
                     >
                       <Pencil size={16} />

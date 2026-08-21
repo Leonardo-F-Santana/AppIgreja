@@ -42,7 +42,7 @@ export default function MainLayout() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed md:relative top-0 left-0 h-full w-64 flex-shrink-0 bg-emerald-900 text-white flex flex-col z-50
+        fixed md:relative top-0 left-0 h-full w-64 flex-shrink-0 bg-blue-900 text-white flex flex-col z-50
         transition-transform duration-300 ease-in-out transform
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
       `}>
@@ -50,16 +50,16 @@ export default function MainLayout() {
           <div className="flex flex-col gap-1">
             <h2 className="text-xl font-bold tracking-tight">MINISTÉRIO IDE</h2>
             <div className="mt-1 flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-emerald-100 truncate max-w-[180px]" title={user?.nome || user?.email || ''}>
+              <span className="text-sm font-medium text-blue-100 truncate max-w-[180px]" title={user?.nome || user?.email || ''}>
                 {user?.nome || user?.email?.split('@')[0] || 'Administrador'}
               </span>
-              <span className="text-[10px] font-bold bg-emerald-800/60 text-emerald-300 py-0.5 px-2 rounded w-max uppercase tracking-wider">
+              <span className="text-[10px] font-bold bg-blue-800/60 text-blue-300 py-0.5 px-2 rounded w-max uppercase tracking-wider">
                 {user?.role || 'Admin'}
               </span>
             </div>
           </div>
           <button 
-            className="md:hidden text-emerald-300 hover:text-white"
+            className="md:hidden text-blue-300 hover:text-white"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <X size={24} />
@@ -67,14 +67,14 @@ export default function MainLayout() {
         </div>
 
         <nav className="flex-1 px-4 overflow-y-auto">
-          <p className="text-[10px] font-bold text-emerald-400/60 mb-4 px-3 tracking-widest uppercase">Menu Principal</p>
+          <p className="text-[10px] font-bold text-blue-400/60 mb-4 px-3 tracking-widest uppercase">Menu Principal</p>
           <ul className="flex flex-col gap-1.5">
             {visibleMenuItems.map((item) => (
               <li key={item.path}>
                 <NavLink 
                   to={item.path}
                   onClick={() => setIsMobileMenuOpen(false)} 
-                  className={({ isActive }) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-colors ${isActive ? 'bg-emerald-800 text-white' : 'text-emerald-100/70 hover:bg-emerald-800/50 hover:text-white'}`}
+                  className={({ isActive }) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-blue-100/70 hover:bg-blue-700/50 hover:text-white'}`}
                 >
                   {item.icon}
                   <span>{item.label}</span>
@@ -84,7 +84,7 @@ export default function MainLayout() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-emerald-800/40">
+        <div className="p-4 border-t border-blue-800/40">
           <button 
             onClick={async () => {
               await signOut();
@@ -103,7 +103,7 @@ export default function MainLayout() {
         {/* Topbar visível apenas no Mobile */}
         <div className="md:hidden bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
           <div className="flex flex-col">
-            <h2 className="text-sm font-bold text-emerald-900 tracking-tight">MINISTÉRIO IDE</h2>
+            <h2 className="text-sm font-bold text-blue-900 tracking-tight">MINISTÉRIO IDE</h2>
           </div>
           <button 
             onClick={() => setIsMobileMenuOpen(true)}

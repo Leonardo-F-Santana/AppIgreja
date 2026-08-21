@@ -209,11 +209,11 @@ export default function Financeiro() {
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between h-32 relative overflow-hidden">
           <div className="flex justify-between items-start z-10">
             <p className="text-gray-500 font-bold text-xs tracking-wider uppercase">Entradas</p>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
               <TrendingUp size={18} strokeWidth={2.5} />
             </div>
           </div>
-          <h2 className="text-3xl font-extrabold text-emerald-600 z-10">{formatarMoeda(totalEntradas)}</h2>
+          <h2 className="text-3xl font-extrabold text-blue-600 z-10">{formatarMoeda(totalEntradas)}</h2>
         </div>
 
         {/* Saídas */}
@@ -334,7 +334,7 @@ export default function Financeiro() {
                   <tr key={t.id} className="hover:bg-gray-50/80 transition-colors group">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${t.tipo === 'entrada' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                        <div className={`p-2 rounded-lg ${t.tipo === 'entrada' ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>
                           {t.tipo === 'entrada' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                         </div>
                         <span className="font-semibold text-gray-900">{t.descricao}</span>
@@ -350,7 +350,7 @@ export default function Financeiro() {
                       {formatarData(t.data)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right font-bold">
-                      <span className={t.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'}>
+                      <span className={t.tipo === 'entrada' ? 'text-blue-600' : 'text-red-600'}>
                         {t.tipo === 'entrada' ? '+' : '-'} {formatarMoeda(t.valor)}
                       </span>
                     </td>
@@ -399,9 +399,9 @@ export default function Financeiro() {
                     checked={tipo === 'entrada'}
                     onChange={() => setTipo('entrada')}
                   />
-                  <div className="w-full py-3 px-4 rounded-xl border-2 border-gray-100 bg-gray-50 text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
-                    <span className="font-bold text-sm text-gray-400 peer-checked:text-emerald-700 flex items-center justify-center gap-2">
-                      <TrendingUp size={16} className={tipo === 'entrada' ? 'text-emerald-600' : ''} />
+                  <div className="w-full py-3 px-4 rounded-xl border-2 border-gray-100 bg-gray-50 text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                    <span className="font-bold text-sm text-gray-400 peer-checked:text-blue-700 flex items-center justify-center gap-2">
+                      <TrendingUp size={16} className={tipo === 'entrada' ? 'text-blue-600' : ''} />
                       Entrada
                     </span>
                   </div>

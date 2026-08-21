@@ -37,7 +37,7 @@ function Toast({ mensagem, tipo, onClose }: ToastProps) {
 
   return (
     <div className={`fixed top-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl text-white text-sm font-semibold
-      ${tipo === 'sucesso' ? 'bg-emerald-600' : 'bg-red-600'}`}
+      ${tipo === 'sucesso' ? 'bg-blue-600' : 'bg-red-600'}`}
     >
       {tipo === 'sucesso' ? <HandHeart size={16} /> : <AlertTriangle size={16} />}
       <span>{mensagem}</span>
@@ -61,7 +61,7 @@ function PedidoCard({ pedido, onStatusChange, onEliminar }: PedidoCardProps) {
     switch (status) {
       case 'pendente': return 'bg-amber-100 text-amber-700 ring-amber-200';
       case 'orando': return 'bg-blue-100 text-blue-700 ring-blue-200';
-      case 'atendido': return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+      case 'atendido': return 'bg-blue-100 text-blue-700 ring-blue-200';
       default: return 'bg-gray-100 text-gray-700 ring-gray-200';
     }
   };
@@ -136,7 +136,7 @@ function PedidoCard({ pedido, onStatusChange, onEliminar }: PedidoCardProps) {
           <button
             onClick={() => onStatusChange(pedido.id, 'atendido')}
             className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-bold transition-colors
-              ${pedido.status === 'atendido' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+              ${pedido.status === 'atendido' ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
           >
             Atendido
           </button>
@@ -210,8 +210,8 @@ function ModalConfirmacao({ pedido, onConfirmar, onCancelar, isLoading }: ModalC
 function EmptyState({ filtrado }: { filtrado: boolean }) {
   return (
     <div className="bg-white rounded-3xl shadow-sm flex flex-col items-center justify-center py-20 gap-4">
-      <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center">
-        <HandHeart size={28} className="text-emerald-300" />
+      <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+        <HandHeart size={28} className="text-blue-300" />
       </div>
       <div className="text-center">
         <p className="text-gray-900 font-bold text-base">
@@ -331,7 +331,7 @@ export default function PedidosPage() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por título ou mensagem..."
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -343,7 +343,7 @@ export default function PedidosPage() {
                 onClick={() => setFiltroStatus(f.value)}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5
                   ${filtroStatus === f.value
-                    ? 'bg-emerald-900 text-white border-emerald-900'
+                    ? 'bg-blue-900 text-white border-blue-900'
                     : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
               >
                 {f.label}
@@ -362,7 +362,7 @@ export default function PedidosPage() {
         {carregando ? (
           <div className="flex items-center justify-center py-24">
             <div className="flex flex-col items-center gap-4 text-gray-400">
-              <svg className="animate-spin h-8 w-8 text-emerald-600" viewBox="0 0 24 24" fill="none">
+              <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>

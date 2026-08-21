@@ -24,7 +24,7 @@ function PrioridadeBadge({ prioridade }: { prioridade: Prioridade }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
       <CheckCircle size={11} />
       Normal
     </span>
@@ -47,7 +47,7 @@ function Toast({ mensagem, tipo, onClose }: ToastProps) {
 
   return (
     <div className={`fixed top-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl text-white text-sm font-semibold
-      ${tipo === 'sucesso' ? 'bg-emerald-600' : 'bg-red-600'}`}
+      ${tipo === 'sucesso' ? 'bg-blue-600' : 'bg-red-600'}`}
     >
       {tipo === 'sucesso' ? <Bell size={16} /> : <AlertTriangle size={16} />}
       <span>{mensagem}</span>
@@ -94,8 +94,8 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-100 p-2.5 rounded-xl">
-              <Bell size={18} className="text-emerald-700" />
+            <div className="bg-blue-100 p-2.5 rounded-xl">
+              <Bell size={18} className="text-blue-700" />
             </div>
             <h2 className="text-gray-900 font-bold text-lg">{titulo}</h2>
           </div>
@@ -115,7 +115,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
               placeholder="Ex: Reunião Extraordinária"
               required
               maxLength={100}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -128,7 +128,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
               required
               maxLength={500}
               rows={4}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
             />
             <p className="text-xs text-gray-400 text-right">{form.mensagem.length}/500</p>
           </div>
@@ -141,10 +141,10 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
                 onClick={() => setForm(f => ({ ...f, prioridade: 'normal' }))}
                 className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition-all
                   ${form.prioridade === 'normal'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                 Normal
               </button>
               <button
@@ -172,7 +172,7 @@ function ModalForm({ inicial, titulo, onClose, onSalvar, isLoading }: ModalFormP
             <button
               type="submit"
               disabled={isLoading || !form.titulo.trim() || !form.mensagem.trim()}
-              className="flex-1 py-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl bg-blue-900 hover:bg-blue-700 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -375,7 +375,7 @@ export default function Avisos() {
           </div>
           <button
             onClick={() => setModal({ tipo: 'criar' })}
-            className="bg-emerald-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2"
+            className="bg-blue-900 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2"
           >
             <Plus size={16} />
             Novo Aviso
@@ -392,7 +392,7 @@ export default function Avisos() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por título ou conteúdo..."
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
           {/* Filtro prioridade */}
@@ -406,8 +406,8 @@ export default function Avisos() {
                     ? f === 'alta'
                       ? 'bg-red-100 text-red-700 border-red-200'
                       : f === 'normal'
-                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                      : 'bg-emerald-900 text-white border-emerald-900'
+                      ? 'bg-blue-100 text-blue-700 border-blue-200'
+                      : 'bg-blue-900 text-white border-blue-900'
                     : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
               >
                 {f === 'todos' ? 'Todos' : f === 'alta' ? 'Urgente' : 'Normal'}
@@ -420,7 +420,7 @@ export default function Avisos() {
         {carregando ? (
           <div className="flex-1 flex items-center justify-center py-24">
             <div className="flex flex-col items-center gap-4 text-gray-400">
-              <svg className="animate-spin h-8 w-8 text-emerald-600" viewBox="0 0 24 24" fill="none">
+              <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
@@ -445,7 +445,7 @@ export default function Avisos() {
             {!busca && filtroPrioridade === 'todos' && (
               <button
                 onClick={() => setModal({ tipo: 'criar' })}
-                className="mt-2 bg-emerald-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors flex items-center gap-2"
+                className="mt-2 bg-blue-900 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors flex items-center gap-2"
               >
                 <Plus size={16} />
                 Novo Aviso
@@ -464,16 +464,16 @@ export default function Avisos() {
               <div
                 key={aviso.id}
                 className={`bg-white rounded-2xl shadow-sm border-l-4 transition-shadow hover:shadow-md
-                  ${aviso.prioridade === 'alta' ? 'border-l-red-500' : 'border-l-emerald-500'}`}
+                  ${aviso.prioridade === 'alta' ? 'border-l-red-500' : 'border-l-blue-500'}`}
               >
                 <div className="p-5 flex flex-col sm:flex-row sm:items-start gap-4">
                   {/* Ícone */}
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
-                    ${aviso.prioridade === 'alta' ? 'bg-red-100' : 'bg-emerald-100'}`}
+                    ${aviso.prioridade === 'alta' ? 'bg-red-100' : 'bg-blue-100'}`}
                   >
                     {aviso.prioridade === 'alta'
                       ? <AlertTriangle size={18} className="text-red-600" />
-                      : <Bell size={18} className="text-emerald-700" />
+                      : <Bell size={18} className="text-blue-700" />
                     }
                   </div>
 
@@ -501,7 +501,7 @@ export default function Avisos() {
                   <div className="flex items-center gap-2 sm:flex-shrink-0">
                     <button
                       onClick={() => setModal({ tipo: 'editar', aviso })}
-                      className="p-2.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-colors"
+                      className="p-2.5 text-gray-400 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
                       title="Editar aviso"
                     >
                       <Pencil size={16} />

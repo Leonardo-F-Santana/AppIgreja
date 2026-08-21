@@ -41,7 +41,7 @@ function Toast({ mensagem, tipo, onClose }: ToastProps) {
 
   return (
     <div className={`fixed top-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl text-white text-sm font-semibold
-      ${tipo === 'sucesso' ? 'bg-emerald-600' : 'bg-red-600'}`}
+      ${tipo === 'sucesso' ? 'bg-blue-600' : 'bg-red-600'}`}
     >
       {tipo === 'sucesso' ? <UserCheck size={16} /> : <ShieldAlert size={16} />}
       <span>{mensagem}</span>
@@ -65,7 +65,7 @@ function formatarData(ts: Membro['createdAt']): string {
 // ─── Classes reutilizáveis do form ────────────────────────────────────────────
 
 const inputClass =
-  'w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all';
+  'w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all';
 const labelClass = 'text-xs font-bold text-gray-500 uppercase tracking-wider';
 const required = <span className="text-red-400 ml-0.5">*</span>;
 
@@ -117,8 +117,8 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-100 p-2.5 rounded-xl">
-              <Users size={18} className="text-emerald-700" />
+            <div className="bg-blue-100 p-2.5 rounded-xl">
+              <Users size={18} className="text-blue-700" />
             </div>
             <div>
               <h2 className="text-gray-900 font-bold text-lg leading-tight">{tituloModal}</h2>
@@ -206,7 +206,7 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
             <button
               type="submit"
               disabled={isLoading || !formValido}
-              className="flex-1 py-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl bg-blue-900 hover:bg-blue-700 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? <><Spinner /> Salvando...</> : 'Salvar Membro'}
             </button>
@@ -446,7 +446,7 @@ export default function MembrosPage() {
             </button>
             <button
               onClick={() => setModal({ tipo: 'criar' })}
-              className="bg-emerald-900 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"
+              className="bg-blue-900 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <Plus size={16} />
               Novo Membro
@@ -463,7 +463,7 @@ export default function MembrosPage() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por nome ou e-mail..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
           
@@ -471,7 +471,7 @@ export default function MembrosPage() {
             <select
               value={filtroAcesso}
               onChange={(e) => setFiltroAcesso(e.target.value)}
-              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             >
               <option value="todos">Todos os Acessos</option>
               <option value="com_app">Com Acesso ao App</option>
@@ -481,7 +481,7 @@ export default function MembrosPage() {
             <select
               value={filtroCargo}
               onChange={(e) => setFiltroCargo(e.target.value)}
-              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             >
               <option value="todos">Todos os Cargos</option>
               <option value="membro">Membros</option>
@@ -494,7 +494,7 @@ export default function MembrosPage() {
         {carregando ? (
           <div className="flex-1 flex items-center justify-center py-24">
             <div className="flex flex-col items-center gap-4 text-gray-400">
-              <svg className="animate-spin h-8 w-8 text-emerald-600" viewBox="0 0 24 24" fill="none">
+              <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
@@ -556,7 +556,7 @@ export default function MembrosPage() {
 
                       <td className="px-6 py-4 whitespace-nowrap">
                         {membro.acessoApp ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
                             <Smartphone size={12} />
                             Com Acesso
                           </span>
@@ -574,7 +574,7 @@ export default function MembrosPage() {
 
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold 
-                          ${isAdmin ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}
+                          ${isAdmin ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'}`}
                         >
                           {isAdmin ? <UserCog size={12} /> : <UserCheck size={12} />}
                           {isAdmin ? 'Administrador' : 'Membro'}
@@ -614,7 +614,7 @@ export default function MembrosPage() {
                                   onClick={() => handleAlterarRole(membro.id, 'membro')}
                                   className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
                                 >
-                                  <UserCheck size={16} className="text-emerald-500" />
+                                  <UserCheck size={16} className="text-blue-500" />
                                   Tornar Membro
                                 </button>
                               ) : (

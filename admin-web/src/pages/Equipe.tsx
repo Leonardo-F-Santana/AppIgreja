@@ -37,7 +37,7 @@ function Toast({ mensagem, tipo, onClose }: ToastProps) {
 
   return (
     <div className={`fixed top-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl text-white text-sm font-semibold
-      ${tipo === 'sucesso' ? 'bg-emerald-600' : 'bg-red-600'}`}
+      ${tipo === 'sucesso' ? 'bg-blue-600' : 'bg-red-600'}`}
     >
       {tipo === 'sucesso' ? <UserCheck size={16} /> : <ShieldAlert size={16} />}
       <span>{mensagem}</span>
@@ -55,7 +55,7 @@ function RoleBadge({ role }: { role: string }) {
     admin: 'bg-purple-100 text-purple-700',
     tesouraria: 'bg-amber-100 text-amber-700',
     secretaria: 'bg-sky-100 text-sky-700',
-    lider: 'bg-emerald-100 text-emerald-700',
+    lider: 'bg-blue-100 text-blue-700',
     membro: 'bg-gray-100 text-gray-500',
   };
 
@@ -138,7 +138,7 @@ export default function Equipe() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShieldCheck size={26} className="text-emerald-600" />
+            <ShieldCheck size={26} className="text-blue-600" />
             Gestão de Equipe
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -148,7 +148,7 @@ export default function Equipe() {
 
         {/* Contador */}
         <div className="flex items-center gap-2 text-sm text-gray-500 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
-          <span className="font-semibold text-emerald-700">{usuarios.length}</span>
+          <span className="font-semibold text-blue-700">{usuarios.length}</span>
           <span>utilizador{usuarios.length !== 1 ? 'es' : ''} registado{usuarios.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
@@ -161,7 +161,7 @@ export default function Equipe() {
           placeholder="Buscar por nome ou e-mail..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all"
+          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
         />
       </div>
 
@@ -170,7 +170,7 @@ export default function Equipe() {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
               <p className="text-sm text-gray-400">Carregando utilizadores...</p>
             </div>
           </div>
@@ -205,7 +205,7 @@ export default function Equipe() {
                       {/* Nome */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-sm font-bold shrink-0">
+                          <div className="w-9 h-9 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-bold shrink-0">
                             {(usuario.username || usuario.email || '?').charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -213,7 +213,7 @@ export default function Equipe() {
                               {usuario.username || '—'}
                             </p>
                             {isCurrentUser && (
-                              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Você</span>
+                              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Você</span>
                             )}
                           </div>
                         </div>
@@ -239,7 +239,7 @@ export default function Equipe() {
                               value={roleAtual}
                               disabled={atualizando === usuario.id}
                               onChange={(e) => handleAtualizarCargo(usuario.id, e.target.value)}
-                              className="appearance-none w-full max-w-[160px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm text-gray-700 cursor-pointer hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="appearance-none w-full max-w-[160px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm text-gray-700 cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {ROLES_DISPONIVEIS.map((r) => (
                                 <option key={r.value} value={r.value}>

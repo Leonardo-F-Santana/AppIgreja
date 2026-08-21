@@ -24,7 +24,7 @@ function Toast({ mensagem, tipo, onClose }: ToastProps) {
 
   return (
     <div className={`fixed top-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl text-white text-sm font-semibold animate-slide-in
-      ${tipo === 'sucesso' ? 'bg-emerald-600' : 'bg-red-600'}`}
+      ${tipo === 'sucesso' ? 'bg-blue-600' : 'bg-red-600'}`}
     >
       {tipo === 'sucesso' ? <Bell size={16} /> : <AlertTriangle size={16} />}
       <span>{mensagem}</span>
@@ -62,8 +62,8 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-100 p-2.5 rounded-xl">
-              <Bell size={18} className="text-emerald-700" />
+            <div className="bg-blue-100 p-2.5 rounded-xl">
+              <Bell size={18} className="text-blue-700" />
             </div>
             <div>
               <h2 className="text-gray-900 font-bold text-lg leading-tight">Publicar Aviso</h2>
@@ -85,7 +85,7 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
               placeholder="Ex: Culto de Celebração — 25/08"
               required
               maxLength={100}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -98,7 +98,7 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
               required
               maxLength={500}
               rows={4}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
             />
             <p className="text-xs text-gray-400 text-right">{mensagem.length}/500</p>
           </div>
@@ -110,9 +110,9 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
                 type="button"
                 onClick={() => setPrioridade('normal')}
                 className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition-all
-                  ${prioridade === 'normal' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
+                  ${prioridade === 'normal' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Normal
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span> Normal
               </button>
               <button
                 type="button"
@@ -132,7 +132,7 @@ function ModalAviso({ onClose, onPublicar, isLoading }: ModalAvisoProps) {
             <button
               type="submit"
               disabled={isLoading || !titulo.trim() || !mensagem.trim()}
-              className="flex-1 py-3 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl bg-blue-900 hover:bg-blue-700 text-white font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? 'Publicando...' : 'Publicar Aviso'}
             </button>
@@ -372,7 +372,7 @@ export default function Dashboard() {
           <div className="relative">
             <button
               onClick={() => setMenuAcoesAberto(!menuAcoesAberto)}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors shadow-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors shadow-sm"
             >
               <span>⚡ Ações Rápidas</span>
             </button>
@@ -383,28 +383,28 @@ export default function Dashboard() {
                   onClick={() => { setIsModalOpen(true); setMenuAcoesAberto(false); }}
                   className="text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
                 >
-                  <Megaphone size={16} className="text-emerald-600" />
+                  <Megaphone size={16} className="text-blue-600" />
                   Publicar Aviso
                 </button>
                 <button
                   onClick={() => { navigate('/eventos'); setMenuAcoesAberto(false); }}
                   className="text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
                 >
-                  <CalendarPlus size={16} className="text-emerald-600" />
+                  <CalendarPlus size={16} className="text-blue-600" />
                   Novo Evento
                 </button>
                 <button
                   onClick={() => { navigate('/celulas'); setMenuAcoesAberto(false); }}
                   className="text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
                 >
-                  <Users size={16} className="text-emerald-600" />
+                  <Users size={16} className="text-blue-600" />
                   Nova Célula
                 </button>
                 <button
                   onClick={() => { navigate('/pedidos'); setMenuAcoesAberto(false); }}
                   className="text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors"
                 >
-                  <HeartHandshake size={16} className="text-emerald-600" />
+                  <HeartHandshake size={16} className="text-blue-600" />
                   Pedidos de Oração
                 </button>
               </div>
@@ -422,13 +422,13 @@ export default function Dashboard() {
                 <p className="text-3xl font-bold text-gray-900">
                   {isDataLoading ? '...' : resumo.totalMembros}
                 </p>
-                <p className="text-xs font-bold text-emerald-600 mt-2 bg-emerald-50 w-max px-2.5 py-1 rounded-full">+12%</p>
+                <p className="text-xs font-bold text-blue-600 mt-2 bg-blue-50 w-max px-2.5 py-1 rounded-full">+12%</p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
-                 <div className={`w-1.5 bg-emerald-300 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[40%]' : 'h-0'}`}></div>
-                 <div className={`w-1.5 bg-emerald-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[70%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-blue-300 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[40%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[70%]' : 'h-0'}`}></div>
                  <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[50%]' : 'h-0'}`}></div>
-                 <div className={`w-1.5 bg-emerald-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
               </div>
             </div>
           </div>
@@ -441,13 +441,13 @@ export default function Dashboard() {
                 <p className="text-3xl font-bold text-gray-900">
                   {loadingFinanceiro ? 'A calcular...' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(saldoDashboard)}
                 </p>
-                <p className="text-xs font-bold text-emerald-600 mt-2 bg-emerald-50 w-max px-2.5 py-1 rounded-full">+5%</p>
+                <p className="text-xs font-bold text-blue-600 mt-2 bg-blue-50 w-max px-2.5 py-1 rounded-full">+5%</p>
               </div>
               <div className="flex items-end gap-1.5 h-10">
-                 <div className={`w-1.5 bg-emerald-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
                  <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[30%]' : 'h-0'}`}></div>
                  <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[50%]' : 'h-0'}`}></div>
-                 <div className={`w-1.5 bg-emerald-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[80%]' : 'h-0'}`}></div>
+                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[80%]' : 'h-0'}`}></div>
               </div>
             </div>
           </div>
@@ -501,7 +501,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col h-full min-h-[300px]">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-gray-900 text-sm font-bold">Próximas Atividades</h3>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Breve</span>
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Breve</span>
             </div>
             <div className="flex-1 flex flex-col gap-4">
               {loadingEventos ? (
@@ -515,7 +515,7 @@ export default function Dashboard() {
                     <div key={evento.id} className="flex items-center gap-4">
                       <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 w-12 flex flex-col items-center justify-center flex-shrink-0">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">{dataFormatada.month}</span>
-                        <span className="text-sm font-black text-emerald-600">{dataFormatada.day}</span>
+                        <span className="text-sm font-black text-blue-600">{dataFormatada.day}</span>
                       </div>
                       <div>
                         <p className="text-sm font-bold text-gray-900 leading-tight line-clamp-1">{evento.titulo}</p>
@@ -559,7 +559,7 @@ export default function Dashboard() {
                     .slice(0, 3)
                     .map(([dia, qtd], index) => {
                       const percentual = Math.round((qtd / dadosCelulas.length) * 100);
-                      const cores = ["bg-emerald-500", "bg-emerald-200", "bg-gray-200"];
+                      const cores = ["bg-blue-500", "bg-blue-200", "bg-gray-200"];
                       const cor = cores[index] || "bg-gray-100";
                       return (
                         <li key={dia} className="flex justify-between items-center text-sm font-bold">
@@ -597,7 +597,7 @@ export default function Dashboard() {
               ) : (
                 ultimosAvisos.map((aviso) => (
                   <div key={aviso.id} className="flex gap-3">
-                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${aviso.prioridade === 'alta' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${aviso.prioridade === 'alta' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
                     <div>
                       <p className="text-sm font-bold text-gray-900 leading-tight line-clamp-1">{aviso.titulo}</p>
                       <p className="text-xs font-medium text-gray-500 mt-0.5 line-clamp-1">{aviso.mensagem}</p>
@@ -633,7 +633,7 @@ export default function Dashboard() {
                     return (
                       <li key={m.id} className={`flex items-center justify-between ${isHoje ? 'bg-amber-50 border border-amber-200 rounded-md p-2 mb-2 mt-1' : 'py-2.5 border-b border-gray-100 last:border-0'}`}>
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs flex-shrink-0">
                             {m.username ? m.username.charAt(0).toUpperCase() : '?'}
                           </div>
                           <div>
@@ -649,10 +649,10 @@ export default function Dashboard() {
                         {numeroLimpo && (
                           <button 
                             onClick={() => window.open(linkWhatsApp, '_blank')}
-                            className="w-8 h-8 rounded-full bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors flex-shrink-0 ml-2"
+                            className="w-8 h-8 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors flex-shrink-0 ml-2"
                             title="Enviar parabéns no WhatsApp"
                           >
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" className="text-emerald-600">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" className="text-blue-600">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
                             </svg>
                           </button>
@@ -675,7 +675,7 @@ export default function Dashboard() {
                   <span className="text-xs font-extrabold text-gray-500">{loadingCelulas ? '-' : `${percentualAtivas}%`}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                  <div className="bg-emerald-500 h-3 rounded-full transition-all duration-1000" style={{ width: loadingCelulas ? '0%' : `${percentualAtivas}%` }}></div>
+                  <div className="bg-blue-500 h-3 rounded-full transition-all duration-1000" style={{ width: loadingCelulas ? '0%' : `${percentualAtivas}%` }}></div>
                 </div>
               </div>
               <div>
