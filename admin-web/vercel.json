@@ -1,8 +1,3 @@
 {
-  "framework": "vite",
-  "functions": {
-    "api/push.ts": {
-      "runtime": "@vercel/node@3"
-    }
-  }
+  "framework": "vite"
 }
