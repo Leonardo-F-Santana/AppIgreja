@@ -23,6 +23,8 @@ export interface Evento {
   /** ISO 8601 string — armazenada como string no Firestore para compatibilidade com datetime-local */
   dataHora: string;
   local: string;
+  /** Campo 'data' vindo do Firestore — pode ser Timestamp ou string ISO */
+  data?: Timestamp | string;
   criadoEm: Timestamp | null;
 }
 

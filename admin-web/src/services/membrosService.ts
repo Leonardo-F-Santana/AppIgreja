@@ -18,6 +18,7 @@ import { db } from "../config/firebase";
 
 export interface Membro {
   id: string;
+  uid?: string;
   username: string;
   email: string;
   role: string;

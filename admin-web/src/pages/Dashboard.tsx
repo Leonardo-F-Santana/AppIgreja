@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowRight, X, Bell, AlertTriangle, Megaphone, CalendarPlus, Users, HeartHandshake, Edit2 } from 'lucide-react';
+import { X, Bell, AlertTriangle, Megaphone, CalendarPlus, Users, HeartHandshake, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { criarAviso, ouvirUltimosAvisos, type Prioridade, type Aviso } from '../services/avisosService';
 import { ouvirResumoDashboard, type DashboardResumo } from '../services/dashboardService';
@@ -178,7 +178,7 @@ export default function Dashboard() {
 
   // Estados Financeiros
   const [saldoDashboard, setSaldoDashboard] = useState<number>(0);
-  const [transacoes, setTransacoes] = useState<any[]>([]);
+  const [, setTransacoes] = useState<any[]>([]);
   const [loadingFinanceiro, setLoadingFinanceiro] = useState(true);
 
   // Estados Membros (Aniversariantes)

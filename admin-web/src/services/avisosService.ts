@@ -26,6 +26,8 @@ export interface Aviso {
   prioridade: Prioridade;
   autor: string;
   dataCriacao: Timestamp | null;
+  /** Campo 'criadoEm' usado pelo dashboardService para ordenação */
+  criadoEm?: Timestamp | string;
 }
 
 export interface CriarAvisoPayload {
