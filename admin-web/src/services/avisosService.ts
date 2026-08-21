@@ -63,14 +63,21 @@ export async function criarAviso(aviso: CriarAvisoPayload): Promise<string> {
   (async () => {
     try {
       const usersSnapshot = await getDocs(usersRef);
-      const tokens: string[] = [];
+      const tokenSet = new Set<string>();
 
       usersSnapshot.forEach((docSnap) => {
         const userData = docSnap.data();
-        if (userData.expoPushToken && typeof userData.expoPushToken === 'string') {
-          tokens.push(userData.expoPushToken);
+        // Só envia para quem tem token e não desativou notificações
+        if (
+          userData.expoPushToken &&
+          typeof userData.expoPushToken === 'string' &&
+          userData.receberNotificacoes !== false
+        ) {
+          tokenSet.add(userData.expoPushToken); // Set elimina duplicados automaticamente
         }
       });
+
+      const tokens = Array.from(tokenSet);
 
       if (tokens.length > 0) {
         // Resumo de no máximo 100 caracteres para a notificação
