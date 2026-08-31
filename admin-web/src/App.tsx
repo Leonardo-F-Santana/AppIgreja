@@ -9,7 +9,6 @@ import EventosPage from './pages/EventosPage';
 import CelulasPage from './pages/CelulasPage';
 import DoacoesPage from './pages/DoacoesPage';
 import PedidosPage from './pages/PedidosPage';
-import ConfiguracoesPage from './pages/ConfiguracoesPage';
 import MembrosPage from './pages/MembrosPage';
 import CultosPage from './pages/CultosPage';
 import VisitantesPage from './pages/VisitantesPage';
@@ -32,7 +31,6 @@ function App() {
             <Route path="celulas" element={<CelulasPage />} />
             <Route path="doacoes" element={<DoacoesPage />} />
             <Route path="pedidos" element={<PedidosPage />} />
-            <Route path="configuracoes" element={<ConfiguracoesPage />} />
             <Route path="membros" element={<MembrosPage />} />
             <Route path="visitantes" element={<VisitantesPage />} />
             <Route path="cultos" element={<CultosPage />} />
