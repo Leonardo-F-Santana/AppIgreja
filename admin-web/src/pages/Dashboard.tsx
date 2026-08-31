@@ -375,7 +375,16 @@ export default function Dashboard() {
   const handlePublicar = async (titulo: string, mensagem: string, prioridade: Prioridade) => {
     setIsLoading(true);
     try {
-      await criarAviso({ titulo, mensagem, prioridade, autor: 'Admin' });
+      await criarAviso({ 
+        titulo, 
+        mensagem, 
+        prioridade, 
+        criadoPor: {
+          uid: user?.uid || 'unknown',
+          nome: user?.nome || user?.email || 'Desconhecido',
+          cargo: user?.role || 'user'
+        }
+      });
       setIsModalOpen(false);
       setToast({ mensagem: 'Aviso publicado com sucesso!', tipo: 'sucesso' });
     } catch (err) {

@@ -19,12 +19,19 @@ import { enviarNotificacaoPushEmMassa } from "../utils/pushNotifications";
 
 export type Prioridade = "alta" | "normal";
 
+export interface CriadoPor {
+  uid: string;
+  nome: string;
+  cargo: string;
+}
+
 export interface Aviso {
   id: string;
   titulo: string;
   mensagem: string;
   prioridade: Prioridade;
-  autor: string;
+  autor?: string; // Mantido para compatibilidade com registros antigos
+  criadoPor?: CriadoPor;
   dataCriacao: Timestamp | null;
   /** Campo 'criadoEm' usado pelo dashboardService para ordenação */
   criadoEm?: Timestamp | string;
@@ -34,7 +41,7 @@ export interface CriarAvisoPayload {
   titulo: string;
   mensagem: string;
   prioridade: Prioridade;
-  autor: string;
+  criadoPor: CriadoPor;
 }
 
 export interface EditarAvisoPayload {
@@ -132,6 +139,7 @@ export function ouvirAvisos(
         mensagem: data.mensagem ?? "",
         prioridade: data.prioridade ?? "normal",
         autor: data.autor ?? "Desconhecido",
+        criadoPor: data.criadoPor ?? undefined,
         dataCriacao: data.dataCriacao ?? null,
       };
     });
@@ -158,6 +166,7 @@ export function ouvirUltimosAvisos(
         mensagem: data.mensagem ?? "",
         prioridade: data.prioridade ?? "normal",
         autor: data.autor ?? "Desconhecido",
+        criadoPor: data.criadoPor ?? undefined,
         dataCriacao: data.dataCriacao ?? null,
       };
     });
