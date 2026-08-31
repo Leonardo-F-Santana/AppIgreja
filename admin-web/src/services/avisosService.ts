@@ -41,7 +41,8 @@ export interface CriarAvisoPayload {
   titulo: string;
   mensagem: string;
   prioridade: Prioridade;
-  criadoPor: CriadoPor;
+  criadoPor?: CriadoPor;
+  autor?: string;
 }
 
 export interface EditarAvisoPayload {
