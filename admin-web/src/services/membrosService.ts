@@ -9,6 +9,7 @@ import {
   orderBy,
   where,
   getDocs,
+  getDoc,
   Timestamp,
   serverTimestamp,
 } from "firebase/firestore";
@@ -65,7 +66,22 @@ export async function atualizarFuncaoMembro(
   novaFuncao: string
 ): Promise<void> {
   const docRef = doc(db, "users", id);
+  const docSnap = await getDoc(docRef);
   await updateDoc(docRef, { role: novaFuncao });
+
+  // Sincronização com o perfil de login (coleção usuarios)
+  if (docSnap.exists()) {
+    const data = docSnap.data();
+    if (data.email) {
+      const q = query(collection(db, "users"), where("email", "==", data.email.toLowerCase().trim()));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach(async (snap) => {
+        if (snap.id !== id) {
+          await updateDoc(doc(db, "users", snap.id), { role: novaFuncao });
+        }
+      });
+    }
+  }
 }
 
 export async function adicionarMembroManual(dados: MembroPayload): Promise<string> {
@@ -97,6 +113,24 @@ export async function editarMembroManual(
 ): Promise<void> {
   const docRef = doc(db, "users", id);
   await updateDoc(docRef, { ...dados });
+
+  // Sincronização com o perfil de login (coleção usuarios)
+  if (dados.email) {
+    const emailSanitizado = dados.email.toLowerCase().trim();
+    const q = query(collection(db, "users"), where("email", "==", emailSanitizado));
+    const querySnapshot = await getDocs(q);
+    
+    querySnapshot.forEach(async (snap) => {
+      // Atualiza os documentos associados (perfil de login), ignorando a própria ficha
+      if (snap.id !== id) {
+        await updateDoc(doc(db, "users", snap.id), {
+          nome: dados.username,
+          telefone: dados.telefone || "",
+          role: dados.role,
+        });
+      }
+    });
+  }
 }
 
 export async function deletarMembro(id: string): Promise<void> {

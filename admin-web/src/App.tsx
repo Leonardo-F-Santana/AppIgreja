@@ -12,6 +12,7 @@ import PedidosPage from './pages/PedidosPage';
 import MembrosPage from './pages/MembrosPage';
 import CultosPage from './pages/CultosPage';
 import VisitantesPage from './pages/VisitantesPage';
+import PerfilPage from './pages/PerfilPage';
 import Financeiro from './pages/Financeiro';
 import Equipe from './pages/Equipe';
 
@@ -33,6 +34,7 @@ function App() {
             <Route path="pedidos" element={<PedidosPage />} />
             <Route path="membros" element={<MembrosPage />} />
             <Route path="visitantes" element={<VisitantesPage />} />
+            <Route path="perfil" element={<PerfilPage />} />
             <Route path="cultos" element={<CultosPage />} />
             <Route path="financeiro" element={
               <ProtectedRoute allowedRoles={['admin', 'tesouraria']}>

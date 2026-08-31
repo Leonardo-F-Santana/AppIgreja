@@ -86,6 +86,15 @@ export default function MainLayout() {
         </nav>
 
         <div className="p-4 border-t border-blue-800/40">
+          <NavLink 
+            to="/perfil"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={({ isActive }) => `flex items-center gap-3 px-3 py-3 w-full rounded-xl text-sm font-medium transition-colors mb-2 ${isActive ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800/50 hover:text-white'}`}
+          >
+            <User size={20} />
+            <span>Meu Perfil</span>
+          </NavLink>
+          
           <button 
             onClick={async () => {
               await signOut();
