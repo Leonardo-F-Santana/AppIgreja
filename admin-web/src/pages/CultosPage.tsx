@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Church, Search, Plus, Pencil, Trash2, X, Users, BookOpen
+  Church, Search, Plus, Pencil, Trash2, X, BookOpen
 } from 'lucide-react';
 import {
   ouvirCultos,
