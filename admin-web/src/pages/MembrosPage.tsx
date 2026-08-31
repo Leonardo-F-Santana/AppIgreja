@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Users, Search, UserCheck, UserCog, MoreVertical, ShieldAlert,
-  Plus, Pencil, Trash2, X, Smartphone, SmartphoneNfc, Download
+  Plus, Pencil, Trash2, X, Smartphone, SmartphoneNfc, Download, Clock,
+  UserX, UserMinus
 } from 'lucide-react';
 import {
   ouvirMembros,
@@ -11,7 +12,9 @@ import {
   deletarMembro,
   type Membro,
   type MembroPayload,
+  type RegistroHistorico,
 } from '../services/membrosService';
+import { ouvirCelulas, type Celula } from '../services/celulasService';
 import { exportToCSV } from '../utils/exportCSV';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
@@ -62,6 +65,48 @@ function formatarData(ts: Membro['createdAt']): string {
   });
 }
 
+function formatarTelefone(valor: string): string {
+  if (!valor) return '';
+  const num = valor.replace(/\D/g, '').substring(0, 11);
+  
+  if (num.length === 11) {
+    return num.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+  if (num.length >= 10) {
+    return num.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  }
+  if (num.length > 2) {
+    return num.replace(/(\d{2})(\d+)/, '($1) $2');
+  }
+  return num;
+}
+
+// ─── Badge de Status ──────────────────────────────────────────────────────────────
+
+const STATUS_OPTIONS = ['Ativo', 'Inativo', 'Afastado', 'Líder', 'Discipulador'] as const;
+
+function renderStatusBadge(status?: string) {
+  const s = (status || 'Ativo').trim();
+  const lower = s.toLowerCase();
+
+  let colorClasses: string;
+  if (lower === 'ativo') {
+    colorClasses = 'bg-green-100 text-green-800 border-green-200';
+  } else if (lower === 'inativo' || lower === 'afastado') {
+    colorClasses = 'bg-red-100 text-red-800 border-red-200';
+  } else if (lower === 'líder' || lower === 'discipulador') {
+    colorClasses = 'bg-blue-100 text-blue-800 border-blue-200';
+  } else {
+    colorClasses = 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClasses}`}>
+      {s}
+    </span>
+  );
+}
+
 // ─── Classes reutilizáveis do form ────────────────────────────────────────────
 
 const inputClass =
@@ -79,6 +124,7 @@ interface ModalFormProps {
   onClose: () => void;
   onSalvar: (form: FormMembro) => Promise<void>;
   isLoading: boolean;
+  celulasList: Celula[];
 }
 
 const FORM_VAZIO: FormMembro = {
@@ -87,15 +133,27 @@ const FORM_VAZIO: FormMembro = {
   telefone: '',
   dataNascimento: '',
   role: 'membro',
+  celulaId: '',
+  celulaNome: '',
+  status: 'Ativo',
 };
 
-function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: ModalFormProps) {
+function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading, celulasList }: ModalFormProps) {
   const [form, setForm] = useState<FormMembro>(inicial ?? { ...FORM_VAZIO });
 
   const set = <K extends keyof FormMembro>(key: K, value: FormMembro[K]) =>
     setForm(f => ({ ...f, [key]: value }));
 
   const formValido = form.username.trim() !== '';
+
+  const handleCelulaChange = (celulaId: string) => {
+    const celulaSelecionada = celulasList.find(c => c.id === celulaId);
+    setForm(f => ({
+      ...f,
+      celulaId: celulaId || '',
+      celulaNome: celulaSelecionada?.nome || '',
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +164,9 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
       telefone: form.telefone?.trim() || '',
       dataNascimento: form.dataNascimento || '',
       role: form.role,
+      celulaId: form.celulaId || '',
+      celulaNome: form.celulaNome || '',
+      status: form.status || 'Ativo',
     });
   };
 
@@ -165,7 +226,7 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
               <input
                 type="text"
                 value={form.telefone}
-                onChange={(e) => set('telefone', e.target.value)}
+                onChange={(e) => set('telefone', formatarTelefone(e.target.value))}
                 placeholder="(99) 99999-9999"
                 maxLength={20}
                 className={inputClass}
@@ -180,6 +241,33 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
                 className={inputClass}
               />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Célula (Opcional)</label>
+            <select
+              value={form.celulaId || ''}
+              onChange={(e) => handleCelulaChange(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Nenhuma célula</option>
+              {celulasList.map((celula) => (
+                <option key={celula.id} value={celula.id}>{celula.nome}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className={labelClass}>Status</label>
+            <select
+              value={form.status || 'Ativo'}
+              onChange={(e) => set('status', e.target.value)}
+              className={inputClass}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -263,13 +351,146 @@ function ModalConfirmacao({ nomeMembro, onConfirmar, onCancelar, isLoading }: Mo
   );
 }
 
+// ─── Modal de Histórico (Timeline) ────────────────────────────────────────────
+
+const TIPOS_HISTORICO_CORES: Record<string, string> = {
+  'Batismo': 'bg-blue-600',
+  'Mudança de Célula': 'bg-amber-500',
+  'Discipulado': 'bg-purple-600',
+  'Promoção': 'bg-green-600',
+  'Afastamento': 'bg-red-500',
+  'Retorno': 'bg-emerald-500',
+  'Cadastro': 'bg-blue-600',
+};
+
+function formatarDataHistorico(dataStr: string): string {
+  try {
+    const date = new Date(dataStr);
+    if (isNaN(date.getTime())) return dataStr;
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit', month: 'long', year: 'numeric',
+    });
+  } catch {
+    return dataStr;
+  }
+}
+
+interface ModalHistoricoProps {
+  membro: Membro;
+  onClose: () => void;
+}
+
+function ModalHistorico({ membro, onClose }: ModalHistoricoProps) {
+  const historico: RegistroHistorico[] = membro.historico ?? [];
+
+  // Gera um evento de cadastro a partir do createdAt se o histórico estiver vazio
+  const timeline: RegistroHistorico[] = historico.length > 0
+    ? [...historico].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+    : [
+        {
+          id: 'auto-cadastro',
+          data: membro.createdAt
+            ? (typeof (membro.createdAt as any).toDate === 'function'
+              ? (membro.createdAt as any).toDate().toISOString()
+              : new Date(membro.createdAt as any).toISOString())
+            : new Date().toISOString(),
+          tipo: 'Cadastro',
+          descricao: `${membro.username} foi registrado(a) no sistema.`,
+        },
+      ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="bg-blue-100 p-2.5 rounded-xl flex-shrink-0">
+              <Clock size={18} className="text-blue-700" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-gray-900 font-bold text-lg leading-tight truncate">Histórico</h2>
+              <p className="text-gray-400 text-xs font-medium mt-0.5 truncate">{membro.username}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors flex-shrink-0"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Timeline */}
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          {timeline.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+              <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center">
+                <Clock size={24} className="text-gray-400" />
+              </div>
+              <p className="text-gray-900 font-bold text-sm">Nenhum registro encontrado</p>
+              <p className="text-gray-400 text-xs font-medium">O histórico deste membro está vazio.</p>
+            </div>
+          ) : (
+            <div className="relative">
+              {/* Linha vertical */}
+              <div className="absolute left-[5px] top-2 bottom-2 w-0.5 bg-blue-200" />
+
+              <div className="flex flex-col gap-6">
+                {timeline.map((item, index) => {
+                  const dotColor = TIPOS_HISTORICO_CORES[item.tipo] || 'bg-gray-500';
+                  return (
+                    <div key={item.id || index} className="relative pl-8">
+                      {/* Ponto na timeline */}
+                      <div
+                        className={`absolute left-0 top-1.5 w-3 h-3 rounded-full ring-4 ring-white ${dotColor}`}
+                      />
+
+                      {/* Conteúdo */}
+                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-sm font-bold text-gray-900">{item.tipo}</span>
+                          <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                            {formatarDataHistorico(item.data)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {item.descricao}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Página Principal ─────────────────────────────────────────────────────────
 
 type ModalState =
   | { tipo: 'nenhum' }
   | { tipo: 'criar' }
   | { tipo: 'editar'; membro: Membro }
-  | { tipo: 'excluir'; membro: Membro };
+  | { tipo: 'excluir'; membro: Membro }
+  | { tipo: 'historico'; membro: Membro };
 
 export default function MembrosPage() {
   const [membros, setMembros] = useState<Membro[]>([]);
@@ -277,6 +498,8 @@ export default function MembrosPage() {
   const [busca, setBusca] = useState('');
   const [filtroAcesso, setFiltroAcesso] = useState('todos');
   const [filtroCargo, setFiltroCargo] = useState('todos');
+  const [filtroCelula, setFiltroCelula] = useState('todos');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
   const [paginaAtual, setPaginaAtual] = useState(1);
   const ITENS_POR_PAGINA = 10;
   
@@ -285,11 +508,19 @@ export default function MembrosPage() {
   const [modal, setModal] = useState<ModalState>({ tipo: 'nenhum' });
   const [isSaving, setIsSaving] = useState(false);
   const [menuAbertoId, setMenuAbertoId] = useState<string | null>(null);
+  const [celulasList, setCelulasList] = useState<Celula[]>([]);
 
   useEffect(() => {
     const unsubscribe = ouvirMembros((dados) => {
       setMembros(dados);
       setCarregando(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = ouvirCelulas((dados) => {
+      setCelulasList(dados);
     });
     return () => unsubscribe();
   }, []);
@@ -304,10 +535,15 @@ export default function MembrosPage() {
                           m.acessoApp === false && !m.uid;
                           
       const matchCargo = filtroCargo === 'todos' ? true : m.role === filtroCargo;
+
+      const matchCelula = filtroCelula === 'todos' ? true : m.celulaId === filtroCelula;
+
+      const matchStatus = filtroStatus === 'todos' ? true
+        : (m.status || 'Ativo').toLowerCase() === filtroStatus.toLowerCase();
       
-      return matchBusca && matchAcesso && matchCargo;
+      return matchBusca && matchAcesso && matchCargo && matchCelula && matchStatus;
     });
-  }, [membros, busca, filtroAcesso, filtroCargo]);
+  }, [membros, busca, filtroAcesso, filtroCargo, filtroCelula, filtroStatus]);
 
   const totalPaginas = Math.ceil(membrosFiltrados.length / ITENS_POR_PAGINA);
   const membrosPaginados = membrosFiltrados.slice(
@@ -317,7 +553,7 @@ export default function MembrosPage() {
 
   useEffect(() => {
     setPaginaAtual(1);
-  }, [busca, filtroAcesso, filtroCargo]);
+  }, [busca, filtroAcesso, filtroCargo, filtroCelula, filtroStatus]);
 
   const toggleMenu = (id: string) => {
     setMenuAbertoId(prev => prev === id ? null : id);
@@ -391,6 +627,7 @@ export default function MembrosPage() {
           onClose={() => setModal({ tipo: 'nenhum' })}
           onSalvar={handleCriar}
           isLoading={isSaving}
+          celulasList={celulasList}
         />
       )}
       {modal.tipo === 'editar' && (
@@ -401,10 +638,14 @@ export default function MembrosPage() {
             email: modal.membro.email,
             telefone: modal.membro.telefone,
             role: modal.membro.role,
+            celulaId: modal.membro.celulaId,
+            celulaNome: modal.membro.celulaNome,
+            status: modal.membro.status,
           }}
           onClose={() => setModal({ tipo: 'nenhum' })}
           onSalvar={handleEditar}
           isLoading={isSaving}
+          celulasList={celulasList}
         />
       )}
       {modal.tipo === 'excluir' && (
@@ -413,6 +654,12 @@ export default function MembrosPage() {
           onConfirmar={handleEliminar}
           onCancelar={() => setModal({ tipo: 'nenhum' })}
           isLoading={isSaving}
+        />
+      )}
+      {modal.tipo === 'historico' && (
+        <ModalHistorico
+          membro={modal.membro}
+          onClose={() => setModal({ tipo: 'nenhum' })}
         />
       )}
 
@@ -432,7 +679,9 @@ export default function MembrosPage() {
                 const dadosFormatados = membrosFiltrados.map(m => ({
                   'Nome': m.username,
                   'E-mail': m.email,
-                  'Telefone': m.telefone || '',
+                  'Telefone': m.telefone ? formatarTelefone(m.telefone) : '',
+                  'Célula': m.celulaNome || 'Não vinculado',
+                  'Status': m.status || 'Ativo',
                   'Acesso ao App': m.acessoApp ? 'Sim' : 'Não',
                   'Nível de Acesso': m.role === 'admin' ? 'Administrador' : 'Membro',
                   'Data de Cadastro': m.createdAt
@@ -454,39 +703,114 @@ export default function MembrosPage() {
           </div>
         </header>
 
-        {/* Barra de Ferramentas: Busca e Filtros */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-1/3 flex-shrink-0">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por nome ou e-mail..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
+        {/* Stats Cards (KPIs) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Total de Membros</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{membros.length}</p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-blue-50">
+              <Users size={20} className="text-blue-600" />
+            </div>
           </div>
-          
-          <div className="flex w-full md:w-auto gap-3">
-            <select
-              value={filtroAcesso}
-              onChange={(e) => setFiltroAcesso(e.target.value)}
-              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            >
-              <option value="todos">Todos os Acessos</option>
-              <option value="com_app">Com Acesso ao App</option>
-              <option value="sem_app">Sem Acesso</option>
-            </select>
-            
-            <select
-              value={filtroCargo}
-              onChange={(e) => setFiltroCargo(e.target.value)}
-              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            >
-              <option value="todos">Todos os Cargos</option>
-              <option value="membro">Membros</option>
-              <option value="admin">Administradores</option>
-            </select>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Ativos</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">
+                {membros.filter(m => (m.status || 'Ativo').toLowerCase() === 'ativo').length}
+              </p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-green-50">
+              <UserCheck size={20} className="text-green-600" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Inativos</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">
+                {membros.filter(m => (m.status || '').toLowerCase() === 'inativo').length}
+              </p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-red-50">
+              <UserX size={20} className="text-red-600" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Afastados</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">
+                {membros.filter(m => (m.status || '').toLowerCase() === 'afastado').length}
+              </p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-amber-50">
+              <UserMinus size={20} className="text-amber-600" />
+            </div>
+          </div>
+        </div>
+
+        {/* Barra de Ferramentas: Busca e Filtros */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            <div className="relative w-full md:flex-1">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome ou e-mail..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div className="flex w-full md:w-auto gap-3 flex-wrap">
+              <select
+                value={filtroCelula}
+                onChange={(e) => setFiltroCelula(e.target.value)}
+                className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="todos">Todas as Células</option>
+                {celulasList.map((celula) => (
+                  <option key={celula.id} value={celula.id}>{celula.nome}</option>
+                ))}
+              </select>
+
+              <select
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+                className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="todos">Todos os Status</option>
+                <option value="Ativo">Ativo</option>
+                <option value="Inativo">Inativo</option>
+                <option value="Afastado">Afastado</option>
+                <option value="Líder">Líder</option>
+                <option value="Discipulador">Discipulador</option>
+              </select>
+
+              <select
+                value={filtroAcesso}
+                onChange={(e) => setFiltroAcesso(e.target.value)}
+                className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="todos">Todos os Acessos</option>
+                <option value="com_app">Com Acesso ao App</option>
+                <option value="sem_app">Sem Acesso</option>
+              </select>
+              
+              <select
+                value={filtroCargo}
+                onChange={(e) => setFiltroCargo(e.target.value)}
+                className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="todos">Todos os Cargos</option>
+                <option value="membro">Membros</option>
+                <option value="admin">Administradores</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -522,6 +846,8 @@ export default function MembrosPage() {
                 <tr>
                   <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Membro</th>
                   <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                  <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Célula</th>
+                  <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Acesso</th>
                   <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Cadastro</th>
                   <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Cargo</th>
@@ -548,10 +874,22 @@ export default function MembrosPage() {
                       
                       <td className="px-6 py-4 whitespace-nowrap">
                         {membro.telefone ? (
-                          <span className="text-sm text-gray-700">{membro.telefone}</span>
+                          <span className="text-sm text-gray-700">{formatarTelefone(membro.telefone)}</span>
                         ) : (
                           <span className="text-sm text-gray-400">-</span>
                         )}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {membro.celulaNome ? (
+                          <span className="text-sm text-gray-700 font-medium">{membro.celulaNome}</span>
+                        ) : (
+                          <span className="text-sm text-gray-400 italic">Não vinculado</span>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {renderStatusBadge(membro.status)}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -626,6 +964,19 @@ export default function MembrosPage() {
                                   Tornar Administrador
                                 </button>
                               )}
+
+                              <div className="mx-2 my-1 border-t border-gray-100"></div>
+
+                              <button
+                                onClick={() => {
+                                  closeMenu();
+                                  setModal({ tipo: 'historico', membro });
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                              >
+                                <Clock size={16} className="text-blue-500" />
+                                Histórico
+                              </button>
 
                               <div className="mx-2 my-1 border-t border-gray-100"></div>
 

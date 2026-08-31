@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, Bell, LogOut, 
-  Settings, Users, User, HandHeart, Menu, X, Wallet, ShieldCheck
+  Settings, Users, User, HandHeart, Menu, X, Wallet, ShieldCheck, Church, UserPlus
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,7 +14,9 @@ export default function MainLayout() {
   const menuItems = [
     { path: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
     { path: '/eventos', icon: <Calendar size={20} />, label: 'Eventos' },
+    { path: '/cultos', icon: <Church size={20} />, label: 'Cultos' },
     { path: '/membros', icon: <User size={20} />, label: 'Membros' },
+    { path: '/visitantes', icon: <UserPlus size={20} />, label: 'Visitantes', requiredRoles: ['admin', 'secretario', 'lider'] },
     { path: '/celulas', icon: <Users size={20} />, label: 'Células' },
     { path: '/avisos', icon: <Bell size={20} />, label: 'Avisos' },
     { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro', requiredRoles: ['admin', 'tesouraria'] },

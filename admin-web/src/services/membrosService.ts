@@ -16,6 +16,13 @@ import { db } from "../config/firebase";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
+export interface RegistroHistorico {
+  id: string;
+  data: string;
+  tipo: string;
+  descricao: string;
+}
+
 export interface Membro {
   id: string;
   uid?: string;
@@ -24,6 +31,10 @@ export interface Membro {
   role: string;
   telefone?: string;
   dataNascimento?: string;
+  celulaId?: string;
+  celulaNome?: string;
+  status?: string;
+  historico?: RegistroHistorico[];
   acessoApp: boolean;
   createdAt: Timestamp | null;
 }
@@ -34,6 +45,9 @@ export interface MembroPayload {
   telefone?: string;
   dataNascimento?: string;
   role: string;
+  celulaId?: string;
+  celulaNome?: string;
+  status?: string;
 }
 
 // ─── Referência da coleção ───────────────────────────────────────────────────
@@ -112,6 +126,10 @@ export function ouvirMembros(
           role: data.role ?? "membro", // Se não tiver role, assume 'membro'
           telefone: data.telefone ?? undefined,
           dataNascimento: data.dataNascimento ?? undefined,
+          celulaId: data.celulaId ?? undefined,
+          celulaNome: data.celulaNome ?? undefined,
+          status: data.status ?? 'Ativo',
+          historico: Array.isArray(data.historico) ? data.historico : [],
           acessoApp: data.acessoApp ?? true,
           createdAt: data.createdAt ?? null,
         };
@@ -133,6 +151,10 @@ export function ouvirMembros(
               role: data.role ?? "membro",
               telefone: data.telefone ?? undefined,
               dataNascimento: data.dataNascimento ?? undefined,
+              celulaId: data.celulaId ?? undefined,
+              celulaNome: data.celulaNome ?? undefined,
+              status: data.status ?? 'Ativo',
+              historico: Array.isArray(data.historico) ? data.historico : [],
               acessoApp: data.acessoApp ?? true,
               createdAt: data.createdAt ?? null,
             };

@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Bell, AlertTriangle, Megaphone, CalendarPlus, Users, HeartHandshake, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { criarAviso, ouvirUltimosAvisos, type Prioridade, type Aviso } from '../services/avisosService';
 import { ouvirResumoDashboard, type DashboardResumo } from '../services/dashboardService';
 import { ouvirProximosEventos, type Evento } from '../services/eventosService';
 import { ouvirCelulas, type Celula } from '../services/celulasService';
+import { ouvirCultos, type CultoRegistro } from '../services/cultosService';
 import { Timestamp, doc, setDoc, onSnapshot, collection, query } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -161,6 +163,7 @@ function formatEventDate(d: any) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -184,6 +187,10 @@ export default function Dashboard() {
   // Estados Membros (Aniversariantes)
   const [membros, setMembros] = useState<any[]>([]);
   const [loadingMembros, setLoadingMembros] = useState(true);
+
+  // Estados Cultos
+  const [cultos, setCultos] = useState<CultoRegistro[]>([]);
+  const [loadingCultos, setLoadingCultos] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setAnimateBars(true), 150);
@@ -228,6 +235,14 @@ export default function Dashboard() {
       } else {
         setMetaAnual(50);
       }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = ouvirCultos((dados) => {
+      setCultos(dados);
+      setLoadingCultos(false);
     });
     return () => unsubscribe();
   }, []);
@@ -309,6 +324,35 @@ export default function Dashboard() {
 
     return lista.sort((a, b) => (a._diaNascTemp || 0) - (b._diaNascTemp || 0));
   }, [membros]);
+
+  // Calcular Cultos (Média e Último)
+  const { mediaPresenca, totalUltimoCulto } = useMemo(() => {
+    if (cultos.length === 0) return { mediaPresenca: 0, totalUltimoCulto: 0 };
+    
+    // Sort descending by date
+    const cultosOrdenados = [...cultos].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    const ultimoCulto = cultosOrdenados[0];
+    const totalUltimoCulto = (ultimoCulto.adultos || 0) + (ultimoCulto.criancas || 0) + (ultimoCulto.visitantes || 0);
+
+    const mesAtual = new Date().getMonth();
+    const anoAtual = new Date().getFullYear();
+    
+    const cultosMes = cultos.filter(c => {
+      const d = new Date(c.data);
+      const parts = c.data.split('-');
+      if (parts.length === 3) {
+        return parseInt(parts[1], 10) - 1 === mesAtual && parseInt(parts[0], 10) === anoAtual;
+      }
+      return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+    });
+
+    if (cultosMes.length === 0) return { mediaPresenca: 0, totalUltimoCulto };
+
+    const somaMes = cultosMes.reduce((acc, c) => acc + (c.adultos || 0) + (c.criancas || 0) + (c.visitantes || 0), 0);
+    const mediaPresenca = Math.round(somaMes / cultosMes.length);
+
+    return { mediaPresenca, totalUltimoCulto };
+  }, [cultos]);
 
   const handleEditarMeta = async () => {
     const novaMetaStr = window.prompt('Digite a nova meta anual de células:', metaAnual.toString());
@@ -433,24 +477,26 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Card 2: Saldo em Caixa (Dinâmico) */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
-            <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Saldo em Caixa</h3>
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-3xl font-bold text-gray-900">
-                  {loadingFinanceiro ? 'A calcular...' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(saldoDashboard)}
-                </p>
-                <p className="text-xs font-bold text-blue-600 mt-2 bg-blue-50 w-max px-2.5 py-1 rounded-full">+5%</p>
-              </div>
-              <div className="flex items-end gap-1.5 h-10">
-                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
-                 <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[30%]' : 'h-0'}`}></div>
-                 <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[50%]' : 'h-0'}`}></div>
-                 <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[80%]' : 'h-0'}`}></div>
+          {/* Card 2: Saldo em Caixa (Dinâmico) - Restrito */}
+          {['admin', 'tesouraria'].includes(user?.role || '') && (
+            <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
+              <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Saldo em Caixa</h3>
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {loadingFinanceiro ? 'A calcular...' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(saldoDashboard)}
+                  </p>
+                  <p className="text-xs font-bold text-blue-600 mt-2 bg-blue-50 w-max px-2.5 py-1 rounded-full">+5%</p>
+                </div>
+                <div className="flex items-end gap-1.5 h-10">
+                   <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[100%]' : 'h-0'}`}></div>
+                   <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[30%]' : 'h-0'}`}></div>
+                   <div className={`w-1.5 bg-gray-200 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[50%]' : 'h-0'}`}></div>
+                   <div className={`w-1.5 bg-blue-500 rounded-t-sm transition-all duration-700 ease-out origin-bottom ${animateBars ? 'h-[80%]' : 'h-0'}`}></div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Card 3: Pedidos de Oração */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
@@ -473,16 +519,16 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Card 4: Eventos Mês */}
+          {/* Card 4: Média de Presença */}
           <div className="bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between h-40">
-            <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Eventos Mês</h3>
+            <h3 className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider">Média de Presença</h3>
             <div className="flex justify-between items-end">
               <div>
                 <p className="text-3xl font-bold text-gray-900">
-                  {isDataLoading ? '...' : resumo.totalEventos}
+                  {loadingCultos ? '...' : mediaPresenca}
                 </p>
                 <p className="text-xs font-bold text-blue-600 mt-2 bg-blue-50 w-max px-2.5 py-1 rounded-full">
-                  {isDataLoading ? '-' : resumo.proximosEventos.length} próximos
+                  {loadingCultos ? '-' : totalUltimoCulto} no último
                 </p>
               </div>
               <div className="flex items-end gap-1.5 h-10">

@@ -11,6 +11,8 @@ import DoacoesPage from './pages/DoacoesPage';
 import PedidosPage from './pages/PedidosPage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
 import MembrosPage from './pages/MembrosPage';
+import CultosPage from './pages/CultosPage';
+import VisitantesPage from './pages/VisitantesPage';
 import Financeiro from './pages/Financeiro';
 import Equipe from './pages/Equipe';
 
@@ -32,6 +34,8 @@ function App() {
             <Route path="pedidos" element={<PedidosPage />} />
             <Route path="configuracoes" element={<ConfiguracoesPage />} />
             <Route path="membros" element={<MembrosPage />} />
+            <Route path="visitantes" element={<VisitantesPage />} />
+            <Route path="cultos" element={<CultosPage />} />
             <Route path="financeiro" element={
               <ProtectedRoute allowedRoles={['admin', 'tesouraria']}>
                 <Financeiro />
