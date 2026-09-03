@@ -184,12 +184,12 @@ export default function HomeScreen() {
 
   // ─── Buscar Dados do Usuário ──────────────────────────────────────────────
   useEffect(() => {
-    async function fetchUserData() {
-      const currentUser = auth.currentUser;
-      if (!currentUser) return;
-      
-      try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', currentUser.uid),
+      (userDoc) => {
         if (userDoc.exists()) {
           const data = userDoc.data();
           setUserName(data.username || currentUser.email?.split('@')[0] || 'Membro');
@@ -198,13 +198,15 @@ export default function HomeScreen() {
           setUserName(currentUser.email?.split('@')[0] || 'Membro');
           setUserEmail(currentUser.email || '');
         }
-      } catch (error) {
+      },
+      (error) => {
         console.error('Erro ao buscar dados do usuário:', error);
         setUserName(currentUser.email?.split('@')[0] || 'Membro');
         setUserEmail(currentUser.email || '');
       }
-    }
-    fetchUserData();
+    );
+
+    return () => unsubscribe();
   }, []);
 
   // ─── Notificações Push ────────────────────────────────────────────────────
@@ -405,6 +407,8 @@ export default function HomeScreen() {
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
+  const primeiroNome = userName ? userName.split(' ')[0] : 'Membro';
+
   return (
     <ImageBackground
       source={require('../../assets/Img/Bg.jpg')}
@@ -421,8 +425,8 @@ export default function HomeScreen() {
 
           {/* ─── Header: Saudação Dinâmica ─────────────────────────────── */}
           <View style={styles.header}>
-            <View>
-              <Text style={styles.greetingText}>{greeting}, {userName}</Text>
+            <View style={{ flex: 1, marginRight: 16 }}>
+              <Text style={styles.greetingText} numberOfLines={2} ellipsizeMode="tail">{greeting}, {primeiroNome}</Text>
               <Text style={styles.dateText}>{currentDate}</Text>
             </View>
             <TouchableOpacity style={styles.profileButton} onPress={() => toggleProfileMenu(true)}>

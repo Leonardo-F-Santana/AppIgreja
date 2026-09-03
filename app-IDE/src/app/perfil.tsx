@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -134,14 +134,14 @@ export default function PerfilScreen() {
       return;
     }
 
-    async function fetchUserData() {
-      try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser!.uid));
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', currentUser.uid),
+      (userDoc) => {
         if (userDoc.exists()) {
           const data = userDoc.data();
           setUserData({
             username: data.username ?? '',
-            email: data.email ?? currentUser!.email ?? '',
+            email: data.email ?? currentUser.email ?? '',
             role: data.role ?? 'membro',
             createdAt: data.createdAt ?? null,
             receberNotificacoes: data.receberNotificacoes ?? true,
@@ -149,29 +149,30 @@ export default function PerfilScreen() {
         } else {
           // Documento não existe no Firestore, usar dados do Auth
           setUserData({
-            username: currentUser!.email?.split('@')[0] ?? '',
-            email: currentUser!.email ?? '',
+            username: currentUser.email?.split('@')[0] ?? '',
+            email: currentUser.email ?? '',
             role: 'membro',
             createdAt: null,
             receberNotificacoes: true,
           });
         }
-      } catch (error) {
+        setIsLoading(false);
+      },
+      (error) => {
         console.error('[PerfilScreen] Erro ao buscar dados do utilizador:', error);
         // Fallback para dados do Auth
         setUserData({
-          username: currentUser!.email?.split('@')[0] ?? '',
-          email: currentUser!.email ?? '',
+          username: currentUser.email?.split('@')[0] ?? '',
+          email: currentUser.email ?? '',
           role: 'membro',
           createdAt: null,
           receberNotificacoes: true,
         });
-      } finally {
         setIsLoading(false);
       }
-    }
+    );
 
-    fetchUserData();
+    return () => unsubscribe();
   }, []);
 
   // ─── Logout ─────────────────────────────────────────────────────────────

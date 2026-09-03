@@ -406,6 +406,8 @@ export default function Dashboard() {
   const percentualMetaRaw = Math.round((totalCelulasMeta / META_ANUAL_CELULAS) * 100);
   const percentualMeta = percentualMetaRaw > 100 ? 100 : percentualMetaRaw;
 
+  const primeiroNome = user?.nome ? user.nome.split(' ')[0] : 'Líder';
+
   return (
     <>
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={() => setToast(null)} />}
@@ -419,8 +421,8 @@ export default function Dashboard() {
         {/* 1. Header (Topo) */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-            <p className="text-gray-500 text-sm mt-1 font-medium">Bem-vindo, Leonardo. Aqui está o resumo de hoje.</p>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Visão Geral</h1>
+            <p className="text-gray-500 text-sm mt-1 font-medium">Bem-vindo, {primeiroNome}. Aqui está o resumo de hoje.</p>
           </div>
           <div className="relative">
             <button

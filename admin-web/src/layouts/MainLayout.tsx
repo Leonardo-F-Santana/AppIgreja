@@ -12,11 +12,11 @@ export default function MainLayout() {
   const navigate = useNavigate();
 
   const menuItems = [
-    { path: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+    { path: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Visão Geral' },
     { path: '/eventos', icon: <Calendar size={20} />, label: 'Eventos' },
     { path: '/cultos', icon: <Church size={20} />, label: 'Cultos' },
     { path: '/membros', icon: <User size={20} />, label: 'Membros' },
-    { path: '/visitantes', icon: <UserPlus size={20} />, label: 'Visitantes', requiredRoles: ['admin', 'secretario', 'lider'] },
+    { path: '/visitantes', icon: <UserPlus size={20} />, label: 'Visitantes', requiredRoles: ['admin', 'secretario', 'secretário', 'secretaria', 'secretária', 'lider', 'líder'] },
     { path: '/celulas', icon: <Users size={20} />, label: 'Células' },
     { path: '/avisos', icon: <Bell size={20} />, label: 'Avisos' },
     { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro', requiredRoles: ['admin', 'tesouraria'] },
@@ -27,7 +27,8 @@ export default function MainLayout() {
   // Filtra itens do menu com base no role do utilizador
   const visibleMenuItems = menuItems.filter((item) => {
     if (!item.requiredRoles) return true;
-    return user?.role && item.requiredRoles.includes(user.role);
+    const userRole = user?.role?.toLowerCase();
+    return userRole && item.requiredRoles.includes(userRole);
   });
 
   return (
