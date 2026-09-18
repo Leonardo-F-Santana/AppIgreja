@@ -115,6 +115,7 @@ const menuItems = [
   { id: '7', title: 'Doações', icon: 'hand-holding-heart', family: 'FontAwesome5', route: '/doacoes' },
   { id: '8', title: 'Devocional', icon: 'book-open', family: 'Feather', route: '/devocional' },
   { id: '9', title: 'Ministérios', icon: 'fire', family: 'FontAwesome5', route: '/ministerios' },
+  { id: '10', title: 'Escolas', icon: 'graduation-cap', family: 'FontAwesome5', route: '/escolas' },
 ];
 
 export default function HomeScreen() {

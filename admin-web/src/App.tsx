@@ -14,6 +14,8 @@ import CultosPage from './pages/CultosPage';
 import VisitantesPage from './pages/VisitantesPage';
 import PerfilPage from './pages/PerfilPage';
 import Financeiro from './pages/Financeiro';
+import EscolasPage from './pages/EscolasPage';
+import TurmaDetalhesPage from './pages/TurmaDetalhesPage';
 import Equipe from './pages/Equipe';
 
 function App() {
@@ -35,6 +37,16 @@ function App() {
             <Route path="membros" element={<MembrosPage />} />
             <Route path="visitantes" element={<VisitantesPage />} />
             <Route path="perfil" element={<PerfilPage />} />
+            <Route path="escolas" element={
+              <ProtectedRoute allowedRoles={['admin', 'lider', 'secretario', 'secretaria']}>
+                <EscolasPage />
+              </ProtectedRoute>
+            } />
+            <Route path="escolas/:turmaId" element={
+              <ProtectedRoute allowedRoles={['admin', 'lider', 'secretario', 'secretaria']}>
+                <TurmaDetalhesPage />
+              </ProtectedRoute>
+            } />
             <Route path="cultos" element={<CultosPage />} />
             <Route path="financeiro" element={
               <ProtectedRoute allowedRoles={['admin', 'tesouraria']}>

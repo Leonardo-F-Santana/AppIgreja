@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, Bell, LogOut, 
-  Users, User, HandHeart, Menu, X, Wallet, ShieldCheck, Church, UserPlus
+  Users, User, HandHeart, Menu, X, Wallet, ShieldCheck, Church, UserPlus, GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,6 +18,7 @@ export default function MainLayout() {
     { path: '/membros', icon: <User size={20} />, label: 'Membros' },
     { path: '/visitantes', icon: <UserPlus size={20} />, label: 'Visitantes', requiredRoles: ['admin', 'secretario', 'secretário', 'secretaria', 'secretária', 'lider', 'líder'] },
     { path: '/celulas', icon: <Users size={20} />, label: 'Células' },
+    { path: '/escolas', icon: <GraduationCap size={20} />, label: 'Escolas', requiredRoles: ['admin', 'lider', 'líder', 'secretario', 'secretária', 'secretaria', 'secretário'] },
     { path: '/avisos', icon: <Bell size={20} />, label: 'Avisos' },
     { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro', requiredRoles: ['admin', 'tesouraria'] },
     { path: '/pedidos', icon: <HandHeart size={20} />, label: 'Pedidos de Oração' },

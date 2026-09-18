@@ -28,8 +28,8 @@ service cloud.firestore {
       // O utilizador pode ler/atualizar os seus próprios dados. Admins podem ler/atualizar todos.
       allow read, update: if isAuth() && (request.auth.uid == userId || isAdmin());
       
-      // Qualquer utilizador autenticado pode criar o seu documento inicial no registo
-      allow create: if isAuth() && request.auth.uid == userId;
+      // Qualquer utilizador autenticado pode criar o seu documento inicial no registo, e admins podem criar novos utilizadores
+      allow create: if isAuth() && (request.auth.uid == userId || isAdmin());
       
       // Apenas admins podem apagar utilizadores
       allow delete: if isAdmin();
@@ -53,8 +53,32 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Coleção: visitantes
+    match /visitantes/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Coleção: transacoes
+    match /transacoes/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Coleção: cultos
+    match /cultos/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
     // Coleção: doacoes
     match /doacoes/{document=**} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // Coleção: turmas (e subcoleções: alunos, aulas)
+    match /turmas/{document=**} {
       allow read: if isAuth();
       allow write: if isAdmin();
     }
