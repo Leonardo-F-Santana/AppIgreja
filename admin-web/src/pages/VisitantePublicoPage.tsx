@@ -29,14 +29,12 @@ interface FormData {
   nome: string;
   telefone: string;
   quemConvidou: string;
-  pedidoOracao: string;
 }
 
 const FORM_INICIAL: FormData = {
   nome: '',
   telefone: '',
   quemConvidou: '',
-  pedidoOracao: '',
 };
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
@@ -120,7 +118,6 @@ export default function VisitantePublicoPage() {
         telefone: form.telefone,
         dataVisita: new Date().toISOString().split('T')[0],
         quemConvidou: form.quemConvidou.trim(),
-        pedidoOracao: form.pedidoOracao.trim(),
         status: 'Novo',
         criadoPor: 'Autoatendimento',
         createdAt: serverTimestamp(),
@@ -218,19 +215,6 @@ export default function VisitantePublicoPage() {
             />
           </div>
 
-          {/* Pedido de Oração */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-blue-200/70 uppercase tracking-wider">
-              Pedido de Oração
-            </label>
-            <textarea
-              value={form.pedidoOracao}
-              onChange={(e) => set('pedidoOracao', e.target.value)}
-              placeholder="Escreva seu pedido de oração aqui..."
-              rows={3}
-              className="w-full px-4 py-3.5 rounded-xl bg-white/10 border border-white/10 text-white text-base font-medium placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent transition-all resize-none"
-            />
-          </div>
 
           {/* Erro */}
           {erro && (

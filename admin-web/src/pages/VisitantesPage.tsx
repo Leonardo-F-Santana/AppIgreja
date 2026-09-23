@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  UserPlus, Search, Plus, Pencil, Trash2, X, Users, QrCode, Download
+  UserPlus, Search, Plus, Pencil, Trash2, X, Users, QrCode, Download,
+  Copy, Check, MessageCircle
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import {
@@ -306,6 +307,21 @@ export default function VisitantesPage() {
   
   const [modal, setModal] = useState<ModalState>({ tipo: 'nenhum' });
   const [isSaving, setIsSaving] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
+
+  const formLink = window.location.origin + '/visitante/cadastro';
+
+  const copiarLink = () => {
+    navigator.clipboard.writeText(formLink).then(() => {
+      setLinkCopiado(true);
+      setTimeout(() => setLinkCopiado(false), 2000);
+    });
+  };
+
+  const compartilharWhatsApp = () => {
+    const wppUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent('Olá! Faça seu cadastro de visitante na nossa igreja acessando este link: ' + formLink)}`;
+    window.open(wppUrl, '_blank');
+  };
 
   useEffect(() => {
     const unsubscribe = ouvirVisitantes((dados) => {
@@ -435,11 +451,11 @@ export default function VisitantesPage() {
               </button>
             </div>
 
-            <div className="px-6 py-8 flex flex-col items-center gap-6">
+            <div className="px-6 py-6 flex flex-col items-center gap-5">
               <div id="qrcode-container" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <QRCode
-                  value={`${window.location.origin}/visitante/cadastro`}
-                  size={220}
+                  value={formLink}
+                  size={200}
                   level="H"
                   bgColor="#ffffff"
                   fgColor="#0f172a"
@@ -452,6 +468,33 @@ export default function VisitantesPage() {
                   Aponte a câmera do celular para o QR Code acima e preencha o formulário de visitante.
                 </p>
               </div>
+
+              {/* Link de cadastro + Copiar */}
+              <div className="w-full flex items-center gap-2">
+                <div className="flex-1 bg-gray-50 border border-gray-200 text-gray-600 text-xs rounded-lg px-3 py-2.5 truncate select-all font-mono">
+                  {formLink}
+                </div>
+                <button
+                  onClick={copiarLink}
+                  className={`shrink-0 p-2.5 rounded-lg border transition-all duration-200 ${
+                    linkCopiado
+                      ? 'bg-green-50 border-green-200 text-green-600'
+                      : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  }`}
+                  title="Copiar link"
+                >
+                  {linkCopiado ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+
+              {/* Botão WhatsApp */}
+              <button
+                onClick={compartilharWhatsApp}
+                className="w-full py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                <MessageCircle size={16} />
+                Compartilhar no WhatsApp
+              </button>
 
               <div className="w-full flex flex-col gap-2 pb-4 md:pb-0">
                 <button
