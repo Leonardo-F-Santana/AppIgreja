@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { signInAnonymously } from 'firebase/auth';
+import { db, auth } from '../config/firebase';
 import { Heart, CheckCircle, Send } from 'lucide-react';
 import logo from '../assets/logo.png';
 
@@ -108,6 +109,11 @@ export default function VisitantePublicoPage() {
     setErro('');
 
     try {
+      // Garante autenticação anônima para passar pelas regras do Firestore
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
       const visitantesRef = collection(db, 'visitantes');
       await addDoc(visitantesRef, {
         nome: form.nome.trim(),

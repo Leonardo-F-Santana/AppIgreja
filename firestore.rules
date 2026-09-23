@@ -56,7 +56,10 @@ service cloud.firestore {
     // Coleção: visitantes
     match /visitantes/{document=**} {
       allow read: if isAuth();
-      allow write: if isAdmin();
+      // Qualquer utilizador autenticado (inclusive anônimo) pode criar fichas de visitante (autoatendimento)
+      allow create: if isAuth();
+      // Apenas admins podem editar ou apagar fichas
+      allow update, delete: if isAdmin();
     }
 
     // Coleção: transacoes

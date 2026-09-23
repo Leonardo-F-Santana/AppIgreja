@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Users, Search, UserCheck, UserCog, MoreVertical, ShieldAlert,
   Plus, Pencil, Trash2, X, Smartphone, SmartphoneNfc, Download, Clock,
-  UserX, UserMinus
+  UserX, UserMinus, KeyRound
 } from 'lucide-react';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../config/firebase';
 import {
   ouvirMembros,
   atualizarFuncaoMembro,
@@ -616,6 +618,31 @@ export default function MembrosPage() {
     }
   };
 
+  const handleResetPassword = async (membro: Membro) => {
+    closeMenu();
+    if (!membro.email) {
+      setToast({ mensagem: 'Este membro não possui e-mail cadastrado.', tipo: 'erro' });
+      return;
+    }
+    const confirmar = window.confirm(
+      `Deseja enviar um e-mail de redefinição de senha para ${membro.username}?\n\nO link será enviado para: ${membro.email}`
+    );
+    if (!confirmar) return;
+    try {
+      await sendPasswordResetEmail(auth, membro.email);
+      setToast({ mensagem: `E-mail de redefinição enviado com sucesso para ${membro.email}`, tipo: 'sucesso' });
+    } catch (error: any) {
+      const code = error?.code || '';
+      if (code === 'auth/user-not-found') {
+        setToast({ mensagem: 'Nenhuma conta encontrada com este e-mail.', tipo: 'erro' });
+      } else if (code === 'auth/invalid-email') {
+        setToast({ mensagem: 'O e-mail cadastrado é inválido.', tipo: 'erro' });
+      } else {
+        setToast({ mensagem: 'Erro ao enviar e-mail de redefinição.', tipo: 'erro' });
+      }
+    }
+  };
+
   return (
     <>
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={() => setToast(null)} />}
@@ -977,6 +1004,17 @@ export default function MembrosPage() {
                                 <Clock size={16} className="text-blue-500" />
                                 Histórico
                               </button>
+
+                              {membro.email && (
+                                <button
+                                  onClick={() => handleResetPassword(membro)}
+                                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                  title="Enviar link de recuperação de senha"
+                                >
+                                  <KeyRound size={16} className="text-amber-500" />
+                                  Redefinir Senha
+                                </button>
+                              )}
 
                               <div className="mx-2 my-1 border-t border-gray-100"></div>
 
