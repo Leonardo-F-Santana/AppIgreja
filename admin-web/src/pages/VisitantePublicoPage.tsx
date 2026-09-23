@@ -126,7 +126,8 @@ export default function VisitantePublicoPage() {
         createdAt: serverTimestamp(),
       });
       setSucesso(true);
-    } catch {
+    } catch (err: any) {
+      console.error('[Visitante] Erro ao cadastrar:', err);
       setErro('Não foi possível enviar o cadastro. Tente novamente.');
     } finally {
       setEnviando(false);

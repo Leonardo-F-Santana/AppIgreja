@@ -47,6 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       
       if (firebaseUser) {
+        // Usuários anônimos (autoatendimento de visitantes) não devem
+        // acessar a coleção 'users' nem ser tratados como membros logados.
+        if (firebaseUser.isAnonymous) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
         // Buscar role do Firestore
         let role: UserRole = 'secretaria'; // fallback seguro
         let nome = firebaseUser.displayName || '';
