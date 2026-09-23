@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  UserPlus, Search, Plus, Pencil, Trash2, X, Users
+  UserPlus, Search, Plus, Pencil, Trash2, X, Users, QrCode, Download
 } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import {
   ouvirVisitantes,
   adicionarVisitante,
@@ -291,7 +292,8 @@ type ModalState =
   | { tipo: 'nenhum' }
   | { tipo: 'criar' }
   | { tipo: 'editar'; visitante: Visitante }
-  | { tipo: 'excluir'; visitante: Visitante };
+  | { tipo: 'excluir'; visitante: Visitante }
+  | { tipo: 'qrcode' };
 
 export default function VisitantesPage() {
   const [visitantes, setVisitantes] = useState<Visitante[]>([]);
@@ -408,6 +410,89 @@ export default function VisitantesPage() {
         />
       )}
 
+      {/* Modal QR Code */}
+      {modal.tipo === 'qrcode' && (
+        <div
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setModal({ tipo: 'nenhum' }); }}
+        >
+          <div className="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 p-2.5 rounded-xl">
+                  <QrCode size={18} className="text-blue-700" />
+                </div>
+                <div>
+                  <h2 className="text-gray-900 font-bold text-lg leading-tight">QR Code</h2>
+                  <p className="text-gray-400 text-xs font-medium mt-0.5">Cadastro de Visitantes</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModal({ tipo: 'nenhum' })}
+                className="p-3 -mr-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="px-6 py-8 flex flex-col items-center gap-6">
+              <div id="qrcode-container" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                <QRCode
+                  value={`${window.location.origin}/visitante/cadastro`}
+                  size={220}
+                  level="H"
+                  bgColor="#ffffff"
+                  fgColor="#0f172a"
+                />
+              </div>
+
+              <div className="text-center">
+                <p className="text-gray-900 font-bold text-sm">Escaneie para se cadastrar</p>
+                <p className="text-gray-400 text-xs font-medium mt-1 px-4 leading-relaxed">
+                  Aponte a câmera do celular para o QR Code acima e preencha o formulário de visitante.
+                </p>
+              </div>
+
+              <div className="w-full flex flex-col gap-2 pb-4 md:pb-0">
+                <button
+                  onClick={() => {
+                    const svg = document.querySelector('#qrcode-container svg');
+                    if (!svg) return;
+                    const svgData = new XMLSerializer().serializeToString(svg);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 512;
+                    canvas.height = 512;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return;
+                    const img = new Image();
+                    img.onload = () => {
+                      ctx.fillStyle = '#ffffff';
+                      ctx.fillRect(0, 0, 512, 512);
+                      ctx.drawImage(img, 32, 32, 448, 448);
+                      const link = document.createElement('a');
+                      link.download = 'qrcode-visitante.png';
+                      link.href = canvas.toDataURL('image/png');
+                      link.click();
+                    };
+                    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+                  }}
+                  className="w-full py-3 rounded-xl bg-blue-900 hover:bg-blue-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download size={16} />
+                  Baixar QR Code
+                </button>
+                <button
+                  onClick={() => setModal({ tipo: 'nenhum' })}
+                  className="w-full py-3 rounded-xl border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-6 md:gap-8 max-w-[1400px] mx-auto pb-20 md:pb-10">
         
         {/* Header */}
@@ -418,10 +503,17 @@ export default function VisitantesPage() {
               Gestão e recepção de novas pessoas na igreja.
             </p>
           </div>
-          <div className="w-full md:w-auto">
+          <div className="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() => setModal({ tipo: 'qrcode' })}
+              className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-3.5 md:py-2.5 rounded-xl font-bold text-base md:text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
+            >
+              <QrCode size={20} className="md:w-4 md:h-4" />
+              Gerar QR Code
+            </button>
             <button
               onClick={() => setModal({ tipo: 'criar' })}
-              className="w-full md:w-auto bg-blue-900 hover:bg-blue-700 text-white px-5 py-3.5 md:py-2.5 rounded-xl font-bold text-base md:text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
+              className="w-full sm:w-auto bg-blue-900 hover:bg-blue-700 text-white px-5 py-3.5 md:py-2.5 rounded-xl font-bold text-base md:text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
             >
               <Plus size={20} className="md:w-4 md:h-4" />
               Novo Visitante

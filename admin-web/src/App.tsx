@@ -17,6 +17,7 @@ import Financeiro from './pages/Financeiro';
 import EscolasPage from './pages/EscolasPage';
 import TurmaDetalhesPage from './pages/TurmaDetalhesPage';
 import Equipe from './pages/Equipe';
+import VisitantePublicoPage from './pages/VisitantePublicoPage';
 
 function App() {
   return (
@@ -24,6 +25,9 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+
+          {/* Rota pública de autoatendimento — FORA do ProtectedRoute e MainLayout */}
+          <Route path="/visitante/cadastro" element={<VisitantePublicoPage />} />
 
           {/* Rotas protegidas envelopadas pelo MainLayout */}
           <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
