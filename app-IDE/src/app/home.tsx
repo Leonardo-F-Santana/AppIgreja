@@ -637,6 +637,19 @@ export default function HomeScreen() {
                   color="#c084fc"
                 />
               </View>
+
+              {/* Row 4 */}
+              <View style={styles.bentoRow}>
+                <BentoCard
+                  title="Escolas"
+                  subtitle="Confira suas turmas e notas"
+                  icon="graduation-cap"
+                  family="FontAwesome5"
+                  route="/escolas"
+                  isLarge={true}
+                  color="#38bdf8"
+                />
+              </View>
             </View>
           </View>
 
@@ -660,6 +673,8 @@ export default function HomeScreen() {
               <AnimatedMoreCard item={menuItems[4]} color="#fbbf24" />
               {/* Avisos */}
               <AnimatedMoreCard item={menuItems[5]} color="#f472b6" />
+              {/* Escolas */}
+              <AnimatedMoreCard item={menuItems[9]} color="#a78bfa" />
               {/* Ministérios */}
               <AnimatedMoreCard item={menuItems[8]} color="#10b981" />
             </ScrollView>
@@ -702,6 +717,9 @@ export default function HomeScreen() {
             {/* Drawer Menu List */}
             <View style={styles.drawerList}>
               <DrawerMenuItem icon="user" title="Meu Perfil" onPress={() => { toggleProfileMenu(false); router.push('/perfil'); }} />
+              <View style={styles.drawerDivider} />
+
+              <DrawerMenuItem icon="graduation-cap" title="Minhas Escolas" family="FontAwesome5" onPress={() => { toggleProfileMenu(false); router.push('/escolas'); }} />
               <View style={styles.drawerDivider} />
 
               <DrawerMenuItem icon="settings" title="Configurações" onPress={() => { toggleProfileMenu(false); router.push('/configuracoes'); }} />

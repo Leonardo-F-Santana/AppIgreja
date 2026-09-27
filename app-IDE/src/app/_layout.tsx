@@ -6,6 +6,13 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { useFonts } from 'expo-font';
+import {
+  Feather,
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+} from '@expo/vector-icons';
 
 // Importa o módulo de push notifications para que o handler e o canal Android
 // sejam configurados o mais cedo possível na inicialização do app.
@@ -17,6 +24,15 @@ import '../services/pushNotifications';
 SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
+  // Pré-carrega todas as fontes de ícones usadas no app para evitar
+  // o erro "Unable to download asset" no ExpoAsset.downloadAsync
+  const [fontsLoaded] = useFonts({
+    ...Feather.font,
+    ...FontAwesome5.font,
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
+  });
+
   const [appIsReady, setAppIsReady] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(false);
   
@@ -27,6 +43,8 @@ export default function TabLayout() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!fontsLoaded) return;
+
     async function prepare() {
       try {
         // Aguarda a verificação de autenticação e estado do AsyncStorage
@@ -62,7 +80,7 @@ export default function TabLayout() {
       }
     }
     prepare();
-  }, []);
+  }, [fontsLoaded]);
 
   useEffect(() => {
     if (appIsReady) {
