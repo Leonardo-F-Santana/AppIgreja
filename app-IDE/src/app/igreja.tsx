@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -15,6 +15,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 
 export default function IgrejaScreen() {
   const router = useRouter();
+  const [abaAtiva, setAbaAtiva] = useState('sobre');
 
   const videoSource = require('../../assets/Img/IDEnacoes.mp4');
   const player = useVideoPlayer(videoSource, player => {
@@ -44,88 +45,141 @@ export default function IgrejaScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* Hero Video */}
-        <VideoView 
-          player={player} 
-          style={styles.heroVideo}
-          contentFit="cover"
-          nativeControls={false}
-        />
-
-        {/* Purpose Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nossa História</Text>
-          <Text style={styles.paragraph}>
-            Somos uma igreja família, chamada para viver no amor de Cristo.{'\n'}
-            Nosso propósito é formar discípulos que caminham juntos, aprendendo e crescendo na fé, apoiando uns aos outros como irmãos. Aqui você encontra um lugar de acolhimento, comunhão e transformação, onde cada pessoa é convidada a seguir Jesus e a refletir Sua luz no mundo.
-          </Text>
+        {/* Tabs Control */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity 
+            style={[styles.tabButton, abaAtiva === 'sobre' && styles.tabButtonActive]}
+            onPress={() => setAbaAtiva('sobre')}
+          >
+            <Text style={[styles.tabButtonText, abaAtiva === 'sobre' && styles.tabButtonTextActive]}>Sobre Nós</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, abaAtiva === 'ministerios' && styles.tabButtonActive]}
+            onPress={() => setAbaAtiva('ministerios')}
+          >
+            <Text style={[styles.tabButtonText, abaAtiva === 'ministerios' && styles.tabButtonTextActive]}>Ministérios</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Pillars Cards */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nossos Pilares</Text>
+        {abaAtiva === 'sobre' ? (
+          <>
+            {/* Hero Video */}
+            <VideoView 
+              player={player} 
+              style={styles.heroVideo}
+              contentFit="cover"
+              nativeControls={false}
+            />
 
-          <View style={styles.card}>
-            <View style={styles.cardIcon}>
-              <Feather name="target" size={24} color="#FFFFFF" />
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Missão</Text>
-              <Text style={styles.cardDescription}>
-                Formar discípulos de Cristo que vivam em comunhão como uma família espiritual, refletindo o amor de Deus e servindo ao próximo com dedicação e fé.
+            {/* Purpose Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Nossa História</Text>
+              <Text style={styles.paragraph}>
+                Somos uma igreja família, chamada para viver no amor de Cristo.{'\n'}
+                Nosso propósito é formar discípulos que caminham juntos, aprendendo e crescendo na fé, apoiando uns aos outros como irmãos. Aqui você encontra um lugar de acolhimento, comunhão e transformação, onde cada pessoa é convidada a seguir Jesus e a refletir Sua luz no mundo.
               </Text>
             </View>
+
+            {/* Pillars Cards */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Nossos Pilares</Text>
+
+              <View style={styles.card}>
+                <View style={styles.cardIcon}>
+                  <Feather name="target" size={24} color="#FFFFFF" />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardTitle}>Missão</Text>
+                  <Text style={styles.cardDescription}>
+                    Formar discípulos de Cristo que vivam em comunhão como uma família espiritual, refletindo o amor de Deus e servindo ao próximo com dedicação e fé.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.card}>
+                <View style={styles.cardIcon}>
+                  <FontAwesome5 name="eye" size={20} color="#FFFFFF" />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardTitle}>Visão</Text>
+                  <Text style={styles.cardDescription}>
+                    Ser uma igreja acolhedora e transformadora, onde cada pessoa encontra propósito em seguir Jesus, cresce em discipulado e se torna luz para a comunidade.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.card}>
+                <View style={styles.cardIcon}>
+                  <Feather name="heart" size={24} color="#FFFFFF" />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardTitle}>Valores</Text>
+                  <Text style={styles.cardDescription}>
+                    Amor, Transparência, Excelência, Serviço Comunitário e Centralidade nas Escrituras.
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Leadership */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Nossos Pastores</Text>
+              <View style={styles.leadershipContainer}>
+                <View style={styles.leaderProfile}>
+                  <Image
+                    source={require('../../assets/Img/pastor-diego.png')}
+                    style={styles.leaderAvatar}
+                  />
+                  <Text style={styles.leaderName}>Pastor Diego</Text>
+                  <Text style={styles.leaderRole}></Text>
+                </View>
+
+                <View style={styles.leaderProfile}>
+                  <Image
+                    source={require('../../assets/Img/pastora-hayane.png')}
+                    style={styles.leaderAvatar}
+                  />
+                  <Text style={styles.leaderName}>Pastora Hayane</Text>
+                  <Text style={styles.leaderRole}></Text>
+                </View>
+              </View>
+            </View>
+          </>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Nossos Ministérios</Text>
+            
+            <View style={styles.card}>
+              <View style={styles.cardIcon}>
+                <Feather name="music" size={24} color="#FFFFFF" />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardTitle}>Louvor</Text>
+                <Text style={styles.cardDescription}>Conduzindo a igreja à adoração através da música e das artes.</Text>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardIcon}>
+                <Feather name="smile" size={24} color="#FFFFFF" />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardTitle}>Infantil</Text>
+                <Text style={styles.cardDescription}>Semeando a palavra de Deus no coração das crianças com amor e cuidado.</Text>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardIcon}>
+                <Feather name="users" size={24} color="#FFFFFF" />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardTitle}>Jovens</Text>
+                <Text style={styles.cardDescription}>Fortalecendo a próxima geração na fé, no discipulado e na comunhão.</Text>
+              </View>
+            </View>
           </View>
-
-          <View style={styles.card}>
-            <View style={styles.cardIcon}>
-              <FontAwesome5 name="eye" size={20} color="#FFFFFF" />
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Visão</Text>
-              <Text style={styles.cardDescription}>
-                Ser uma igreja acolhedora e transformadora, onde cada pessoa encontra propósito em seguir Jesus, cresce em discipulado e se torna luz para a comunidade.
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <View style={styles.cardIcon}>
-              <Feather name="heart" size={24} color="#FFFFFF" />
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Valores</Text>
-              <Text style={styles.cardDescription}>
-                Amor, Transparência, Excelência, Serviço Comunitário e Centralidade nas Escrituras.
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Leadership */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nossos Pastores</Text>
-          <View style={styles.leadershipContainer}>
-            <View style={styles.leaderProfile}>
-              <Image
-                source={require('../../assets/Img/pastor-diego.png')}
-                style={styles.leaderAvatar}
-              />
-              <Text style={styles.leaderName}>Pastor Diego</Text>
-              <Text style={styles.leaderRole}></Text>
-            </View>
-
-            <View style={styles.leaderProfile}>
-              <Image
-                source={require('../../assets/Img/pastora-hayane.png')}
-                style={styles.leaderAvatar}
-              />
-              <Text style={styles.leaderName}>Pastora Hayane</Text>
-              <Text style={styles.leaderRole}></Text>
-            </View>
-          </View>
-        </View>
-
+        )}
       </ScrollView>
     </View>
   );
@@ -158,6 +212,31 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 4,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabButtonActive: {
+    backgroundColor: '#3b82f6',
+  },
+  tabButtonText: {
+    color: '#CCCCCC',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tabButtonTextActive: {
+    color: '#FFFFFF',
   },
   heroVideo: {
     width: '100%',

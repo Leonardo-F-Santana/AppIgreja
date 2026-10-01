@@ -14,8 +14,9 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
@@ -89,15 +90,16 @@ function getDiaSemana(dataHora: string | Timestamp): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-function formatarDataAviso(ts: Timestamp | null): string {
+function formatarData(ts: Timestamp | null): string {
   if (!ts) return '';
   try {
     const date = ts.toDate();
     const dia = String(date.getDate()).padStart(2, '0');
     const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const ano = date.getFullYear();
     const hora = String(date.getHours()).padStart(2, '0');
     const min = String(date.getMinutes()).padStart(2, '0');
-    return `${dia}/${mes} às ${hora}:${min}`;
+    return `${dia}/${mes}/${ano} às ${hora}:${min}`;
   } catch {
     return '';
   }
@@ -105,21 +107,36 @@ function formatarDataAviso(ts: Timestamp | null): string {
 
 // ─── Menu Items ───────────────────────────────────────────────────────────────
 
-const menuItems = [
-  { id: '1', title: 'Igreja', icon: 'church', family: 'FontAwesome5', route: '/igreja' },
-  { id: '2', title: 'Cultos', icon: 'users', family: 'Feather', route: '/cultos' },
-  { id: '3', title: 'Células', icon: 'account-group', family: 'MaterialCommunityIcons', route: '/celulas' },
-  { id: '4', title: 'Pedidos', icon: 'praying-hands', family: 'FontAwesome5', route: '/pedidos' },
-  { id: '5', title: 'Eventos', icon: 'calendar', family: 'Feather', route: '/eventos' },
-  { id: '6', title: 'Avisos', icon: 'bell', family: 'Feather', route: '/avisos' },
-  { id: '7', title: 'Doações', icon: 'hand-holding-heart', family: 'FontAwesome5', route: '/doacoes' },
-  { id: '8', title: 'Devocional', icon: 'book-open', family: 'Feather', route: '/devocional' },
-  { id: '9', title: 'Ministérios', icon: 'fire', family: 'FontAwesome5', route: '/ministerios' },
-  { id: '10', title: 'Escolas', icon: 'graduation-cap', family: 'FontAwesome5', route: '/escolas' },
+const gridMenu = [
+  { id: '1', title: 'Nossa Igreja', icon: 'church', family: 'FontAwesome5', route: '/igreja' },
+  { id: '2', title: 'Escola', icon: 'school', family: 'Ionicons', route: '/escolas' },
+  { id: '3', title: 'Células', icon: 'user-friends', family: 'FontAwesome5', route: '/celulas' },
+  { id: '4', title: 'Eventos', icon: 'calendar', family: 'Feather', route: '/eventos' },
+  { id: '5', title: 'Social', icon: 'share-2', family: 'Feather', route: '/midias' },
+  { id: '6', title: 'Devocional', icon: 'book-open', family: 'Feather', route: '/devocional' },
+  { id: '7', title: 'Pedidos', icon: 'praying-hands', family: 'FontAwesome5', route: '/pedidos' },
+  { id: '8', title: 'Doações', icon: 'hand-holding-heart', family: 'FontAwesome5', route: '/doacoes' },
 ];
+
+const mockEvents = [
+  { id: '1', title: 'Oração das Mães', image: require('../../assets/Img/P1.jpg') },
+  { id: '2', title: 'Encontro de adolescentes!', image: require('../../assets/Img/P2.jpg') },
+  { id: '3', title: 'Café conexão', image: require('../../assets/Img/P3.jpg') },
+];
+
+
+const getSaudacao = () => {
+  const hora = new Date().getHours();
+  if (hora >= 0 && hora <= 11) return 'Bom dia';
+  if (hora >= 12 && hora <= 17) return 'Boa tarde';
+  return 'Boa noite';
+};
+
+const mockUserName = "Leonardo";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // ─── Estados Dinâmicos ────────────────────────────────────────────────────
   const [greeting, setGreeting] = useState('Olá');
@@ -129,6 +146,7 @@ export default function HomeScreen() {
 
   // ─── Estados do Firestore ─────────────────────────────────────────────────
   const [avisoDestaque, setAvisoDestaque] = useState<Aviso | null>(null);
+  const [avisosMural, setAvisosMural] = useState<Aviso[]>([]);
   const [proximoEvento, setProximoEvento] = useState<Evento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -214,10 +232,10 @@ export default function HomeScreen() {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
-      
+
       try {
         const token = await registerForPushNotificationsAsync();
-        
+
         if (token) {
           const userRef = doc(db, 'users', user.uid);
           await updateDoc(userRef, {
@@ -247,6 +265,21 @@ export default function HomeScreen() {
       }
     }, (error) => {
       console.error('Erro ao buscar avisos:', error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // ─── Firestore: Todos os Avisos do Mural ──────────────────────────────────
+  useEffect(() => {
+    const avisosRef = collection(db, 'avisos');
+    const q = query(avisosRef, orderBy('dataCriacao', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Aviso));
+      setAvisosMural(docs);
+    }, (error) => {
+      console.error('Erro ao buscar avisos do mural:', error);
     });
 
     return () => unsubscribe();
@@ -295,91 +328,6 @@ export default function HomeScreen() {
     }
   };
 
-  // ─── Componente: Bento Card ───────────────────────────────────────────────
-  const BentoCard = ({ title, subtitle, icon, family, route, isLarge, onPressOverride, color = '#4ade80' }: { title: string, subtitle?: string, icon: string, family?: string, route?: string, isLarge?: boolean, onPressOverride?: () => void, color?: string }) => {
-    const scaleValue = useRef(new Animated.Value(1)).current;
-
-    const onPressIn = () => {
-      Animated.spring(scaleValue, {
-        toValue: 0.97,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const onPressOut = () => {
-      Animated.spring(scaleValue, {
-        toValue: 1,
-        friction: 4,
-        tension: 40,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    return (
-      <Pressable
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        onPress={() => onPressOverride ? onPressOverride() : (route ? router.push(route as any) : null)}
-        style={isLarge ? styles.bentoCardLargeWrapper : styles.bentoCardSmallWrapper}
-      >
-        <Animated.View style={[styles.bentoCard, isLarge ? styles.bentoCardLarge : styles.bentoCardSmall, { transform: [{ scale: scaleValue }] }]}>
-          <View style={[styles.bentoIconContainer, isLarge && { marginBottom: 0, marginRight: 15 }]}>
-            {renderIcon(family, icon, isLarge ? 24 : 22, color)}
-          </View>
-          <View style={styles.bentoTextContainer}>
-            <Text style={styles.bentoTitle}>{title}</Text>
-            {isLarge && subtitle && <Text style={styles.bentoSubtitle}>{subtitle}</Text>}
-          </View>
-          {isLarge && (
-            <View style={styles.bentoActionIcon}>
-              <Feather name="arrow-right" size={20} color="rgba(255,255,255,0.3)" />
-            </View>
-          )}
-        </Animated.View>
-      </Pressable>
-    );
-  };
-
-  // ─── Componente: Card Horizontal (Explorar Mais) ──────────────────────────
-  const AnimatedMoreCard = ({ item, color }: { item: any, color: string }) => {
-    const scaleValue = useRef(new Animated.Value(1)).current;
-
-    const onPressIn = () => {
-      Animated.spring(scaleValue, {
-        toValue: 0.95,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const onPressOut = () => {
-      Animated.spring(scaleValue, {
-        toValue: 1,
-        friction: 4,
-        tension: 40,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const getBgColorWithOpacity = (hexColor: string) => {
-      return hexColor + '20';
-    };
-
-    return (
-      <Pressable
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        onPress={() => router.push(item.route as any)}
-      >
-        <Animated.View style={[styles.moreCard, { transform: [{ scale: scaleValue }] }]}>
-          <View style={[styles.moreCardIconCircle, { backgroundColor: getBgColorWithOpacity(color) }]}>
-            {renderIcon(item.family, item.icon, 24, color)}
-          </View>
-          <Text style={styles.moreCardTitle}>{item.title}</Text>
-        </Animated.View>
-      </Pressable>
-    );
-  };
-
   // ─── Componente: Drawer Menu Item ─────────────────────────────────────────
   const DrawerMenuItem = ({ icon, title, family = 'Feather', isDestructive = false, onPress }: any) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
@@ -418,274 +366,122 @@ export default function HomeScreen() {
     >
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Overlay escuro em cima da imagem de fundo para dar contraste */}
       <View style={styles.overlay} />
 
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-          {/* ─── Header: Saudação Dinâmica ─────────────────────────────── */}
-          <View style={styles.header}>
-            <View style={{ flex: 1, marginRight: 16 }}>
-              <Text style={styles.greetingText} numberOfLines={2} ellipsizeMode="tail">{greeting}, {primeiroNome}</Text>
-              <Text style={styles.dateText}>{currentDate}</Text>
-            </View>
-            <TouchableOpacity style={styles.profileButton} onPress={() => toggleProfileMenu(true)}>
-              <Feather name="user" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../../assets/Img/logo sem fundo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
 
-          {/* ─── Hero: Próximo Evento (Dinâmico do Firestore) ──────────── */}
-          {isLoading ? (
-            <View style={[styles.fakeGlass, styles.heroCard, { alignItems: 'center', justifyContent: 'center', minHeight: 160 }]}>
-              <ActivityIndicator size="large" color="#4ade80" />
-              <Text style={{ color: '#AAAAAA', marginTop: 12, fontSize: 14 }}>Carregando...</Text>
-            </View>
-          ) : proximoEvento ? (
-            <View style={[styles.fakeGlass, styles.heroCard]}>
-              <View style={styles.heroHeader}>
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>PRÓXIMO EVENTO</Text>
-                </View>
-                <View style={styles.heroDateBadge}>
-                  <Feather name="calendar" size={14} color="#4ade80" />
-                  <Text style={styles.heroDateText}>
-                    {getDia(proximoEvento.dataHora)} {getMes(proximoEvento.dataHora)}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.heroTitle}>{proximoEvento.titulo}</Text>
-              <View style={styles.heroInfoRow}>
-                <View style={styles.heroInfoItem}>
-                  <Feather name="clock" size={14} color="#AAAAAA" />
-                  <Text style={styles.heroSubtitle}>
-                    {getDiaSemana(proximoEvento.dataHora)} às {getHora(proximoEvento.dataHora)}
-                  </Text>
-                </View>
-                {proximoEvento.local ? (
-                  <View style={styles.heroInfoItem}>
-                    <Ionicons name="location-outline" size={14} color="#AAAAAA" />
-                    <Text style={styles.heroSubtitle}>{proximoEvento.local}</Text>
-                  </View>
-                ) : null}
-              </View>
-
-              <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/eventos')}>
-                <Text style={styles.heroButtonText}>Ver Todos os Eventos</Text>
-                <Feather name="arrow-right" size={16} color="#000000" />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={[styles.fakeGlass, styles.heroCard]}>
-              <View style={styles.heroHeader}>
-                <View style={[styles.liveBadge, { backgroundColor: 'rgba(170, 170, 170, 0.15)' }]}>
-                  <Feather name="calendar" size={12} color="#AAAAAA" />
-                  <Text style={[styles.liveText, { color: '#AAAAAA', marginLeft: 6 }]}>EVENTOS</Text>
-                </View>
-              </View>
-              <Text style={styles.heroTitle}>Nenhum evento próximo</Text>
-              <Text style={[styles.heroSubtitle, { marginBottom: 20 }]}>
-                Fique atento! Novos eventos serão publicados em breve.
+          {/* Meditação do dia */}
+          <View style={styles.meditacaoContainer}>
+            <Text style={styles.meditacaoLabel}>
+              {getSaudacao()}, {mockUserName}! Uma palavra para hoje:
+            </Text>
+            <View style={styles.meditacaoCard}>
+              <Text style={styles.meditacaoText}>
+                "E nós conhecemos e cremos no amor que Deus tem por nós. Deus é amor, e quem permanece no amor permanece em Deus, e Deus nele."
               </Text>
-              <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/eventos')}>
-                <Text style={styles.heroButtonText}>Ver Histórico</Text>
-                <Feather name="arrow-right" size={16} color="#000000" />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* ─── Aviso em Destaque (Dinâmico do Firestore) ─────────────── */}
-          {avisoDestaque && (
-            <View style={[styles.sectionContainer, { paddingHorizontal: 20 }]}>
-              <View style={styles.sectionHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <MaterialCommunityIcons
-                    name="bullhorn-outline"
-                    size={18}
-                    color={avisoDestaque.prioridade === 'alta' ? '#FF6B6B' : '#4ade80'}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text style={styles.sectionTitle}>Aviso Importante</Text>
-                </View>
-                <TouchableOpacity onPress={() => router.push('/avisos')}>
-                  <Text style={styles.seeAllText}>Ver todos</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Pressable
-                onPress={() => router.push('/avisos')}
-                style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
-              >
-                <View style={[
-                  styles.fakeGlass,
-                  styles.avisoDestaqueCard,
-                  avisoDestaque.prioridade === 'alta' && styles.avisoDestaqueUrgente,
-                ]}>
-                  {/* Barra lateral de prioridade */}
-                  <View style={[
-                    styles.avisoPrioridadeBar,
-                    { backgroundColor: avisoDestaque.prioridade === 'alta' ? '#FF6B6B' : '#4ade80' },
-                  ]} />
-
-                  <View style={styles.avisoContent}>
-                    {/* Badge + Data */}
-                    <View style={styles.avisoMetaRow}>
-                      <View style={[
-                        styles.avisoBadge,
-                        { backgroundColor: avisoDestaque.prioridade === 'alta' ? 'rgba(255,107,107,0.15)' : 'rgba(74,222,128,0.15)' },
-                      ]}>
-                        {avisoDestaque.prioridade === 'alta' ? (
-                          <MaterialCommunityIcons name="alert-circle" size={11} color="#FF6B6B" style={{ marginRight: 4 }} />
-                        ) : (
-                          <MaterialCommunityIcons name="check-circle" size={11} color="#4ade80" style={{ marginRight: 4 }} />
-                        )}
-                        <Text style={{
-                          fontSize: 10,
-                          fontWeight: 'bold',
-                          letterSpacing: 1,
-                          color: avisoDestaque.prioridade === 'alta' ? '#FF6B6B' : '#4ade80',
-                        }}>
-                          {avisoDestaque.prioridade === 'alta' ? 'URGENTE' : 'AVISO'}
-                        </Text>
-                      </View>
-                      {avisoDestaque.dataCriacao && (
-                        <Text style={styles.avisoDate}>
-                          {formatarDataAviso(avisoDestaque.dataCriacao)}
-                        </Text>
-                      )}
-                    </View>
-
-                    {/* Título */}
-                    <Text style={styles.avisoTitulo} numberOfLines={2}>
-                      {avisoDestaque.titulo}
-                    </Text>
-
-                    {/* Mensagem (preview) */}
-                    {avisoDestaque.mensagem ? (
-                      <Text style={styles.avisoMensagem} numberOfLines={2}>
-                        {avisoDestaque.mensagem}
-                      </Text>
-                    ) : null}
-
-                    {/* Autor */}
-                    {avisoDestaque.autor ? (
-                      <View style={styles.avisoAutorRow}>
-                        <Feather name="user" size={12} color="#666666" />
-                        <Text style={styles.avisoAutor}>{avisoDestaque.autor}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </View>
-              </Pressable>
-            </View>
-          )}
-
-          {/* ─── Quick Actions (Bento Grid) ────────────────────────────── */}
-          <View style={styles.sectionContainer}>
-            <View style={styles.bentoContainer}>
-              {/* Row 1 - Destaque */}
-              <View style={styles.bentoRow}>
-                <BentoCard
-                  title="Pedidos de Oração"
-                  subtitle="Envie seus pedidos e interceda"
-                  icon="praying-hands"
-                  family="FontAwesome5"
-                  route="/pedidos"
-                  isLarge={true}
-                  color="#facc15"
-                />
-              </View>
-
-              {/* Row 2 */}
-              <View style={styles.bentoRow}>
-                <BentoCard
-                  title="Células"
-                  icon="account-group"
-                  family="MaterialCommunityIcons"
-                  route="/celulas"
-                  isLarge={false}
-                  color="#60a5fa"
-                />
-                <BentoCard
-                  title="Cultos"
-                  icon="users"
-                  family="Feather"
-                  route="/cultos"
-                  isLarge={false}
-                  color="#f87171"
-                />
-              </View>
-
-              {/* Row 3 */}
-              <View style={styles.bentoRow}>
-                <BentoCard
-                  title="Contribuição"
-                  icon="hand-holding-heart"
-                  family="FontAwesome5"
-                  route="/doacoes"
-                  isLarge={false}
-                  color="#4ade80"
-                />
-                <BentoCard
-                  title="Devocional"
-                  icon="book-open"
-                  family="Feather"
-                  route="/devocional"
-                  isLarge={false}
-                  color="#c084fc"
-                />
-              </View>
-
-              {/* Row 4 */}
-              <View style={styles.bentoRow}>
-                <BentoCard
-                  title="Escolas"
-                  subtitle="Confira suas turmas e notas"
-                  icon="graduation-cap"
-                  family="FontAwesome5"
-                  route="/escolas"
-                  isLarge={true}
-                  color="#38bdf8"
-                />
-              </View>
+              <Text style={styles.meditacaoReference}>1 Jo 4:16</Text>
             </View>
           </View>
 
-          {/* ─── Explorar Mais (Horizontal Scroll) ─────────────────────── */}
-          <View style={styles.sectionContainer}>
-            <View style={styles.exploreHeader}>
-              <View>
-                <Text style={styles.sectionTitleWithoutMargin}>Explorar Mais</Text>
-                <Text style={styles.exploreSubtitle}>Deslize para ver mais opções</Text>
-              </View>
-              <Feather name="arrow-right" size={20} color="rgba(255,255,255,0.4)" />
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingLeft: 20, paddingRight: 8 }}
-            >
-              {/* Igreja */}
-              <AnimatedMoreCard item={menuItems[0]} color="#38bdf8" />
-              {/* Eventos */}
-              <AnimatedMoreCard item={menuItems[4]} color="#fbbf24" />
-              {/* Avisos */}
-              <AnimatedMoreCard item={menuItems[5]} color="#f472b6" />
-              {/* Escolas */}
-              <AnimatedMoreCard item={menuItems[9]} color="#a78bfa" />
-              {/* Ministérios */}
-              <AnimatedMoreCard item={menuItems[8]} color="#10b981" />
+          {/* Grid de Navegação */}
+          <View style={styles.gridContainer}>
+            {gridMenu.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.gridItem}
+                onPress={() => router.push(item.route as any)}
+              >
+                <View style={styles.gridIconCircle}>
+                  {renderIcon(item.family, item.icon, 24, '#FFFFFF')}
+                </View>
+                <Text style={styles.gridItemText}>{item.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Carrossel de Próximos Eventos */}
+          <View style={styles.eventosSection}>
+            <Text style={styles.eventosLabel}>Próximos Eventos:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.eventosScroll}>
+              {mockEvents.map((evento) => (
+                <TouchableOpacity key={evento.id} style={styles.eventoCard} onPress={() => router.push('/eventos')}>
+                  <Image source={evento.image as any} style={styles.eventoImage} resizeMode="contain" />
+                  <Text style={styles.eventoTitle}>{evento.title}</Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
+          </View>
+
+          {/* Mural de Avisos */}
+          <View style={styles.avisosSection}>
+            <Text style={styles.avisosLabel}>Mural de Avisos:</Text>
+            {avisosMural.length === 0 ? (
+              <Text style={{ color: '#FFFFFF', fontStyle: 'italic', marginLeft: 10 }}>Nenhum aviso no momento</Text>
+            ) : (
+              avisosMural.map((aviso) => (
+                <View key={aviso.id} style={styles.avisoCard}>
+                  <View style={styles.avisoIconContainer}>
+                    <Feather name="bell" size={20} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.avisoTextContainer}>
+                    <Text style={styles.avisoTitle}>{aviso.titulo}</Text>
+                    <Text style={styles.avisoText}>{aviso.mensagem}</Text>
+                    <Text style={styles.avisoDate}>{formatarData(aviso.dataCriacao)}</Text>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
 
         </ScrollView>
       </SafeAreaView>
 
-      <SocialFabMenu />
+      {/* TabBar Inferior Customizada */}
+      <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 8 }]}>
+        <View style={styles.tabBarLeft}>
+          <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/cultos')}>
+            <Feather name="users" size={22} color="#000000" />
+            <Text style={[styles.tabText, { color: '#000000' }]}>Cultos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/devocional')}>
+            <Feather name="book-open" size={22} color="#666666" />
+            <Text style={[styles.tabText, { color: '#666666' }]}>Devocional</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* ─── Profile Drawer Modal ────────────────────────────────────── */}
+        <View style={styles.tabBarRight}>
+          <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/avisos')}>
+            <Feather name="bell" size={22} color="#666666" />
+            <Text style={[styles.tabText, { color: '#666666' }]}>Notificações</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabItem} onPress={() => toggleProfileMenu(true)}>
+            <Feather name="user" size={22} color="#666666" />
+            <Text style={[styles.tabText, { color: '#666666' }]}>Perfil</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Botão Flutuante WhatsApp */}
+      <TouchableOpacity
+        style={[styles.fabWhatsApp, { bottom: insets.bottom > 0 ? insets.bottom : 15 }]}
+        onPress={() => Linking.openURL('https://wa.me/5521993971641').catch(() => Alert.alert('Erro', 'Não foi possível abrir o WhatsApp'))}
+      >
+        <FontAwesome5 name="whatsapp" size={32} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {/* ─── Profile Drawer Modal ────────────────────── */}
       <Modal
         visible={isProfileMenuVisible}
         transparent={true}
@@ -696,7 +492,6 @@ export default function HomeScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => toggleProfileMenu(false)} />
 
           <Animated.View style={[styles.drawerContainer, { transform: [{ translateX: slideAnim }] }]}>
-            {/* Drawer Header */}
             <View style={styles.drawerHeader}>
               <View style={[styles.profileAvatarPlaceholder, { padding: 0, overflow: 'hidden' }]}>
                 <Image
@@ -709,23 +504,18 @@ export default function HomeScreen() {
                 <Feather name="camera" size={14} color="#AAAAAA" />
                 <Text style={styles.changePhotoText}>Alterar foto de perfil</Text>
               </TouchableOpacity>
-
               <Text style={styles.profileName}>{userName}</Text>
               <Text style={styles.profileEmail}>{userEmail}</Text>
             </View>
 
-            {/* Drawer Menu List */}
             <View style={styles.drawerList}>
               <DrawerMenuItem icon="user" title="Meu Perfil" onPress={() => { toggleProfileMenu(false); router.push('/perfil'); }} />
               <View style={styles.drawerDivider} />
-
               <DrawerMenuItem icon="graduation-cap" title="Minhas Escolas" family="FontAwesome5" onPress={() => { toggleProfileMenu(false); router.push('/escolas'); }} />
               <View style={styles.drawerDivider} />
-
               <DrawerMenuItem icon="settings" title="Configurações" onPress={() => { toggleProfileMenu(false); router.push('/configuracoes'); }} />
             </View>
 
-            {/* Drawer Footer */}
             <View style={styles.drawerFooter}>
               <DrawerMenuItem icon="log-out" title="Sair do aplicativo" isDestructive={true} onPress={handleLogout} />
             </View>
@@ -742,287 +532,228 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(5, 5, 10, 0.75)',
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   safeArea: {
     flex: 1,
     paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 40,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
-  // -- ESTILO FAKE GLASSMORPHISM --
-  fakeGlass: {
-    backgroundColor: 'rgba(15, 15, 25, 0.85)',
+  logoContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  logo: {
+    width: 240,
+    height: 100,
+  },
+  meditacaoContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 25,
+  },
+  meditacaoLabel: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  meditacaoCard: {
+    backgroundColor: 'rgba(15, 15, 25, 0.65)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(255, 200, 100, 0.4)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  meditacaoText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 20,
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  meditacaoReference: {
+    color: '#AAAAAA',
+    fontSize: 13,
+    textAlign: 'right',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
+    justifyContent: 'flex-start',
+    marginBottom: 20,
+  },
+  gridItem: {
+    width: '25%',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  gridIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    backgroundColor: 'transparent',
+  },
+  gridItemText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  eventosSection: {
+    paddingLeft: 20,
+    marginBottom: 20,
+  },
+  eventosLabel: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  eventosScroll: {
+    paddingRight: 20,
+  },
+  eventoCard: {
+    width: 140,
+    marginRight: 15,
+    alignItems: 'center',
+  },
+  eventoImage: {
+    width: 150,
+    height: 200,
+    borderRadius: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  eventoTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  avisosSection: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  avisosLabel: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  avisoCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  avisoIconContainer: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  avisoTextContainer: {
+    flex: 1,
+  },
+  avisoTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  avisoText: {
+    color: '#CCCCCC',
+    fontSize: 13,
+  },
+  avisoDate: {
+    color: '#999999',
+    fontSize: 11,
+    marginTop: 6,
+    alignSelf: 'flex-end',
+  },
+  tabBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    minHeight: 55,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+  },
+  tabBarLeft: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingRight: 35,
+  },
+  tabBarRight: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingLeft: 35,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabText: {
+    fontSize: 10,
+    color: '#000000',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  fabWhatsApp: {
+    position: 'absolute',
+    alignSelf: 'center',
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+    backgroundColor: '#25D366',
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 6,
+    zIndex: 10,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
   },
-
-  // -- Header Dinâmico --
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    marginBottom: 10,
-  },
-  greetingText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  dateText: {
-    color: '#4ade80',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // -- Hero Section (Próximo Evento) --
-  heroCard: {
-    marginHorizontal: 20,
-    padding: 20,
-    marginBottom: 30,
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(74, 222, 128, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#4ade80',
-    marginRight: 6,
-  },
-  liveText: {
-    color: '#4ade80',
-    fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  heroDateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 6,
-  },
-  heroDateText: {
-    color: '#4ade80',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  heroInfoRow: {
-    marginBottom: 20,
-    gap: 6,
-  },
-  heroInfoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  heroSubtitle: {
-    color: '#AAAAAA',
-    fontSize: 14,
-  },
-  heroButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4ade80',
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  heroButtonText: {
-    color: '#000000',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginRight: 8,
-  },
-
-  // -- Aviso em Destaque --
-  avisoDestaqueCard: {
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  avisoDestaqueUrgente: {
-    borderColor: 'rgba(255, 107, 107, 0.25)',
-  },
-  avisoPrioridadeBar: {
-    width: 4,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
-  },
-  avisoContent: {
-    flex: 1,
-    padding: 16,
-  },
-  avisoMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  avisoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  avisoDate: {
-    color: '#666666',
-    fontSize: 11,
-  },
-  avisoTitulo: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  avisoMensagem: {
-    color: '#AAAAAA',
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 8,
-  },
-  avisoAutorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  avisoAutor: {
-    color: '#666666',
-    fontSize: 12,
-  },
-
-  // -- General Sections --
-  sectionContainer: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  seeAllText: {
-    color: '#4ade80',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  // -- Bento Grid Actions --
-  bentoContainer: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  bentoRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  bentoCardLargeWrapper: {
-    width: '100%',
-  },
-  bentoCardSmallWrapper: {
-    flex: 1,
-  },
-  bentoCard: {
-    backgroundColor: 'rgba(15, 15, 25, 0.75)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    overflow: 'hidden',
-  },
-  bentoCardLarge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  bentoCardSmall: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    padding: 16,
-    height: 110,
-    justifyContent: 'space-between',
-  },
-  bentoIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  bentoTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  bentoTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  bentoSubtitle: {
-    color: '#AAAAAA',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  bentoActionIcon: {
-    marginLeft: 10,
-  },
-
-  // -- Profile Drawer Menu --
+  // -- Drawer Styles --
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -1037,11 +768,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.12)',
     paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 20 : 60,
     paddingBottom: 40,
-    elevation: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: -5, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
   },
   drawerHeader: {
     alignItems: 'center',
@@ -1113,52 +839,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     paddingTop: 10,
-  },
-
-  // -- Explorar Mais Cards --
-  exploreHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  sectionTitleWithoutMargin: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  exploreSubtitle: {
-    color: '#AAAAAA',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  moreCard: {
-    backgroundColor: 'rgba(15, 15, 25, 0.90)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 24,
-    width: width * 0.38,
-    height: 145,
-    padding: 16,
-    marginRight: 12,
-    justifyContent: 'space-between',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-  },
-  moreCardIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  moreCardTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
   },
 });
