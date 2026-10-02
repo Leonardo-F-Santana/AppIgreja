@@ -2,9 +2,29 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, Bell, LogOut, 
-  Users, User, HandHeart, Menu, X, Wallet, ShieldCheck, Church, UserPlus, GraduationCap
+  Users, User, HandHeart, Menu, X, Wallet, ShieldCheck, Church, UserPlus, GraduationCap,
+  Image
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import type { UserRole } from '../contexts/AuthContext';
+
+// ────────────────────────────────────────────────
+// RBAC — Mapa centralizado de permissões por menu
+// ────────────────────────────────────────────────
+const MENU_PERMISSIONS: Record<string, UserRole[]> = {
+  'Visão Geral':      ['admin', 'secretaria', 'tesouraria', 'lider'],
+  'Eventos':          ['admin', 'secretaria', 'lider', 'midia'],
+  'Cultos':           ['admin', 'secretaria', 'lider', 'midia'],
+  'Membros':          ['admin', 'secretaria', 'tesouraria', 'lider'],
+  'Visitantes':       ['admin', 'secretaria'],
+  'Células':          ['admin', 'secretaria', 'lider'],
+  'Escolas':          ['admin', 'secretaria', 'lider'],
+  'Avisos':           ['admin', 'secretaria', 'lider', 'midia'],
+  'Mídias':           ['admin', 'midia'],
+  'Financeiro':       ['admin', 'tesouraria'],
+  'Pedidos de Oração':['admin', 'secretaria', 'lider'],
+  'Equipe':           ['admin'],
+};
 
 export default function MainLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -16,20 +36,25 @@ export default function MainLayout() {
     { path: '/eventos', icon: <Calendar size={20} />, label: 'Eventos' },
     { path: '/cultos', icon: <Church size={20} />, label: 'Cultos' },
     { path: '/membros', icon: <User size={20} />, label: 'Membros' },
-    { path: '/visitantes', icon: <UserPlus size={20} />, label: 'Visitantes', requiredRoles: ['admin', 'secretario', 'secretário', 'secretaria', 'secretária', 'lider', 'líder'] },
+    { path: '/visitantes', icon: <UserPlus size={20} />, label: 'Visitantes' },
     { path: '/celulas', icon: <Users size={20} />, label: 'Células' },
-    { path: '/escolas', icon: <GraduationCap size={20} />, label: 'Escolas', requiredRoles: ['admin', 'lider', 'líder', 'secretario', 'secretária', 'secretaria', 'secretário'] },
+    { path: '/escolas', icon: <GraduationCap size={20} />, label: 'Escolas' },
     { path: '/avisos', icon: <Bell size={20} />, label: 'Avisos' },
-    { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro', requiredRoles: ['admin', 'tesouraria'] },
+    { path: '/midias', icon: <Image size={20} />, label: 'Mídias' },
+    { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro' },
     { path: '/pedidos', icon: <HandHeart size={20} />, label: 'Pedidos de Oração' },
-    { path: '/equipe', icon: <ShieldCheck size={20} />, label: 'Equipe', requiredRoles: ['admin'] },
+    { path: '/equipe', icon: <ShieldCheck size={20} />, label: 'Equipe' },
   ];
 
-  // Filtra itens do menu com base no role do utilizador
+  // Filtra itens do menu com base no role do utilizador (RBAC)
+  const userRole = user?.role?.toLowerCase() as UserRole | undefined;
   const visibleMenuItems = menuItems.filter((item) => {
-    if (!item.requiredRoles) return true;
-    const userRole = user?.role?.toLowerCase();
-    return userRole && item.requiredRoles.includes(userRole);
+    const allowedRoles = MENU_PERMISSIONS[item.label];
+    // Se não há mapa para o item, oculta por segurança
+    if (!allowedRoles) return false;
+    // Se o role não está carregado, não renderiza menus sensíveis
+    if (!userRole) return false;
+    return allowedRoles.includes(userRole);
   });
 
   return (

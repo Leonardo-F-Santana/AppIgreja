@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
-  HandHeart, Trash2, Search, AlertTriangle, Clock, X, ShieldAlert
+  HandHeart, Trash2, Search, AlertTriangle, Clock, X, ShieldAlert, MessageCircle, Send
 } from 'lucide-react';
 import {
   ouvirPedidos,
   atualizarStatusPedido,
   deletarPedido,
+  responderPedido,
   type PedidoOracao,
   type StatusPedido,
 } from '../services/pedidosService';
@@ -54,14 +55,16 @@ interface PedidoCardProps {
   pedido: PedidoOracao;
   onStatusChange: (id: string, status: StatusPedido) => void;
   onEliminar: (pedido: PedidoOracao) => void;
+  onResponder: (pedido: PedidoOracao) => void;
 }
 
-function PedidoCard({ pedido, onStatusChange, onEliminar }: PedidoCardProps) {
+function PedidoCard({ pedido, onStatusChange, onEliminar, onResponder }: PedidoCardProps) {
   const getStatusColor = (status: StatusPedido) => {
     switch (status) {
       case 'pendente': return 'bg-amber-100 text-amber-700 ring-amber-200';
       case 'orando': return 'bg-blue-100 text-blue-700 ring-blue-200';
       case 'atendido': return 'bg-blue-100 text-blue-700 ring-blue-200';
+      case 'respondido': return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
       default: return 'bg-gray-100 text-gray-700 ring-gray-200';
     }
   };
@@ -71,6 +74,7 @@ function PedidoCard({ pedido, onStatusChange, onEliminar }: PedidoCardProps) {
       case 'pendente': return 'Pendente';
       case 'orando': return 'Em Oração';
       case 'atendido': return 'Atendido';
+      case 'respondido': return 'Respondido';
       default: return status;
     }
   };
@@ -113,6 +117,24 @@ function PedidoCard({ pedido, onStatusChange, onEliminar }: PedidoCardProps) {
             {pedido.mensagem}
           </p>
         </div>
+
+        {/* Resposta Pastoral (se existir) */}
+        {pedido.resposta && (
+          <div className="mt-3 p-4 bg-emerald-50 rounded-xl border border-emerald-100 border-l-4 border-l-emerald-500">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageCircle size={14} className="text-emerald-600" />
+              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Resposta Pastoral</span>
+            </div>
+            <p className="text-sm font-medium text-emerald-800 leading-relaxed whitespace-pre-wrap italic">
+              {pedido.resposta}
+            </p>
+            {pedido.respondidoEm && (
+              <p className="text-[10px] text-emerald-500 mt-2 font-semibold">
+                Respondido em {formatarData(pedido.respondidoEm)}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Ações (Rodapé) */}
@@ -141,6 +163,19 @@ function PedidoCard({ pedido, onStatusChange, onEliminar }: PedidoCardProps) {
             Atendido
           </button>
         </div>
+
+        {/* Botão Responder */}
+        <button
+          onClick={() => onResponder(pedido)}
+          className={`p-2 rounded-lg transition-colors w-full sm:w-auto flex justify-center items-center gap-1.5 text-xs font-bold
+            ${pedido.resposta
+              ? 'text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50'
+              : 'text-blue-500 hover:text-blue-700 hover:bg-blue-50'}`}
+          title={pedido.resposta ? 'Editar resposta' : 'Responder pedido'}
+        >
+          <MessageCircle size={14} />
+          {pedido.resposta ? 'Editar Resposta' : 'Responder'}
+        </button>
 
         {/* Botão Eliminar */}
         <button
@@ -205,6 +240,86 @@ function ModalConfirmacao({ pedido, onConfirmar, onCancelar, isLoading }: ModalC
   );
 }
 
+// ─── Modal Resposta Pastoral ──────────────────────────────────────────────────
+
+interface ModalRespostaProps {
+  pedido: PedidoOracao;
+  onEnviar: (id: string, texto: string) => void;
+  onCancelar: () => void;
+  isLoading: boolean;
+}
+
+function ModalResposta({ pedido, onEnviar, onCancelar, isLoading }: ModalRespostaProps) {
+  const [texto, setTexto] = useState(pedido.resposta || '');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div className="px-8 py-6 flex flex-col gap-5">
+          {/* Cabeçalho */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                <MessageCircle size={20} className="text-emerald-600" />
+              </div>
+              <div>
+                <h2 className="text-gray-900 font-bold text-lg">Resposta Pastoral</h2>
+                <p className="text-gray-400 text-xs font-medium">Pedido: {pedido.titulo}</p>
+              </div>
+            </div>
+            <button onClick={onCancelar} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Mensagem original */}
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Pedido Original</p>
+            <p className="text-sm text-gray-600 leading-relaxed">{pedido.mensagem}</p>
+          </div>
+
+          {/* Textarea da resposta */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              Sua Palavra de Encorajamento
+            </label>
+            <textarea
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              rows={5}
+              placeholder="Escreva uma palavra de encorajamento, versículo ou orientação pastoral..."
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
+            />
+          </div>
+
+          {/* Botões */}
+          <div className="flex gap-3 pt-1">
+            <button
+              onClick={onCancelar}
+              className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => onEnviar(pedido.id, texto)}
+              disabled={isLoading || !texto.trim()}
+              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              ) : <Send size={14} />}
+              Enviar Resposta
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Estado Vazio ─────────────────────────────────────────────────────────────
 
 function EmptyState({ filtrado }: { filtrado: boolean }) {
@@ -238,7 +353,9 @@ export default function PedidosPage() {
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
   
   const [pedidoParaEliminar, setPedidoParaEliminar] = useState<PedidoOracao | null>(null);
+  const [pedidoParaResponder, setPedidoParaResponder] = useState<PedidoOracao | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isResponding, setIsResponding] = useState(false);
   const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'erro' } | null>(null);
 
   // Subscrição em tempo real
@@ -263,6 +380,7 @@ export default function PedidosPage() {
   const totalPendentes = pedidos.filter(p => p.status === 'pendente').length;
   const totalOrando = pedidos.filter(p => p.status === 'orando').length;
   const totalAtendidos = pedidos.filter(p => p.status === 'atendido').length;
+  const totalRespondidos = pedidos.filter(p => p.status === 'respondido').length;
 
   // ── Handlers ──
 
@@ -291,11 +409,26 @@ export default function PedidosPage() {
     }
   };
 
+  const handleResponder = async (id: string, textoResposta: string) => {
+    setIsResponding(true);
+    try {
+      await responderPedido(id, textoResposta);
+      setPedidoParaResponder(null);
+      setToast({ mensagem: 'Resposta pastoral enviada com sucesso!', tipo: 'sucesso' });
+    } catch (err) {
+      console.error('[PedidosPage] Erro ao responder:', err);
+      setToast({ mensagem: 'Erro ao enviar resposta. Tente novamente.', tipo: 'erro' });
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
   const filtros: { label: string; value: FiltroStatus; count?: number }[] = [
     { label: 'Todos', value: 'todos', count: pedidos.length },
     { label: 'Pendentes', value: 'pendente', count: totalPendentes },
     { label: 'Em Oração', value: 'orando', count: totalOrando },
     { label: 'Atendidos', value: 'atendido', count: totalAtendidos },
+    { label: 'Respondidos', value: 'respondido', count: totalRespondidos },
   ];
 
   return (
@@ -308,6 +441,15 @@ export default function PedidosPage() {
           onConfirmar={handleEliminar}
           onCancelar={() => setPedidoParaEliminar(null)}
           isLoading={isDeleting}
+        />
+      )}
+
+      {pedidoParaResponder && (
+        <ModalResposta
+          pedido={pedidoParaResponder}
+          onEnviar={handleResponder}
+          onCancelar={() => setPedidoParaResponder(null)}
+          isLoading={isResponding}
         />
       )}
 
@@ -384,6 +526,7 @@ export default function PedidosPage() {
                   pedido={pedido}
                   onStatusChange={handleStatusChange}
                   onEliminar={setPedidoParaEliminar}
+                  onResponder={setPedidoParaResponder}
                 />
               ))}
             </div>

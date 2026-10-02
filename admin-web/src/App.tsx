@@ -18,6 +18,7 @@ import EscolasPage from './pages/EscolasPage';
 import TurmaDetalhesPage from './pages/TurmaDetalhesPage';
 import Equipe from './pages/Equipe';
 import VisitantePublicoPage from './pages/VisitantePublicoPage';
+import MidiasPage from './pages/MidiasPage';
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="cultos" element={<CultosPage />} />
+            <Route path="midias" element={<MidiasPage />} />
             <Route path="financeiro" element={
               <ProtectedRoute allowedRoles={['admin', 'tesouraria']}>
                 <Financeiro />

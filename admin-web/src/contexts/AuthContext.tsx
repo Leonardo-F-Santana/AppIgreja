@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 // Tipos de cargo disponíveis no sistema
-export type UserRole = 'admin' | 'tesouraria' | 'secretaria' | 'lider';
+export type UserRole = 'admin' | 'tesouraria' | 'secretaria' | 'lider' | 'midia';
 
 // Interface do utilizador com role
 export interface AppUser {
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            if (data.role && ['admin', 'tesouraria', 'secretaria', 'lider'].includes(data.role)) {
+            if (data.role && ['admin', 'tesouraria', 'secretaria', 'lider', 'midia'].includes(data.role)) {
               role = data.role as UserRole;
             }
             if (data.nome) {

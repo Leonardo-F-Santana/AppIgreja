@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,10 +11,13 @@ import {
   Share,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
 
 type Devotional = { id: string; date: string; title: string; content: string; };
 
@@ -23,21 +26,114 @@ export default function DevocionalScreen() {
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [devotionals, setDevotionals] = useState<Devotional[]>([]);
+  const [historico, setHistorico] = useState<Devotional[]>([]);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
-  const handleSave = () => {
+  const prepararEdicao = (item: Devotional) => {
+    setTitle(item.title);
+    setContent(item.content);
+    setEditandoId(item.id);
+  };
+
+  const atualizarDevocional = async () => {
+    if (!title.trim() || !content.trim() || !editandoId) return;
+
+    try {
+      await updateDoc(doc(db, 'devocionais', editandoId), {
+        titulo: title.trim(),
+        texto: content.trim(),
+      });
+
+      Alert.alert('Sucesso', 'Devocional atualizado com sucesso!');
+      setTitle('');
+      setContent('');
+      setEditandoId(null);
+    } catch (error) {
+      console.error('Erro ao atualizar devocional:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar o devocional.');
+    }
+  };
+
+  const excluirDevocional = (id: string) => {
+    Alert.alert(
+      'Atenção',
+      'Deseja mesmo excluir este devocional?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Excluir', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'devocionais', id));
+              Alert.alert('Sucesso', 'Devocional excluído!');
+              if (editandoId === id) {
+                setTitle('');
+                setContent('');
+                setEditandoId(null);
+              }
+            } catch (error) {
+              console.error('Erro ao excluir:', error);
+              Alert.alert('Erro', 'Não foi possível excluir.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const q = query(
+      collection(db, 'devocionais'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const devocionaisData = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.titulo || 'Sem título',
+          content: data.texto || '',
+          date: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString('pt-BR') : 'Data Indisponível',
+        } as Devotional;
+      });
+      setHistorico(devocionaisData);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const salvarDevocional = async () => {
     if (!title.trim() || !content.trim()) return;
 
-    const newDevotional = {
-      id: Date.now().toString(),
-      date: new Date().toLocaleDateString('pt-BR'),
-      title: title.trim(),
-      content: content.trim(),
-    };
+    try {
+      const user = auth.currentUser;
 
-    setDevotionals([newDevotional, ...devotionals]);
-    setTitle('');
-    setContent('');
+      if (!user) {
+        Alert.alert('Erro', 'Você precisa estar logado para salvar.');
+        return;
+      }
+
+      await addDoc(collection(db, 'devocionais'), {
+        titulo: title.trim(),
+        texto: content.trim(),
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+      });
+
+      Alert.alert('Sucesso', 'Devocional salvo com sucesso!');
+      
+      setTitle('');
+      setContent('');
+    } catch (error) {
+      console.error('Erro ao salvar devocional:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o devocional. Tente novamente.');
+    }
   };
 
   const handleShare = async (devotional: Devotional) => {
@@ -61,7 +157,16 @@ export default function DevocionalScreen() {
           <Feather name="share-2" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
-      <Text style={styles.cardContent}>{item.content}</Text>
+      <Text style={styles.cardContent} numberOfLines={2}>{item.content}</Text>
+      
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
+        <TouchableOpacity onPress={() => prepararEdicao(item)} style={[styles.actionButton, { marginRight: 10 }]}>
+          <Feather name="edit-2" size={16} color="#A0AEC0" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => excluirDevocional(item.id)} style={styles.actionButton}>
+          <Feather name="trash-2" size={16} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -107,15 +212,35 @@ export default function DevocionalScreen() {
                 onChangeText={setContent}
               />
               
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Salvar Devocional</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <TouchableOpacity 
+                  style={[styles.saveButton, { flex: 1, marginRight: editandoId ? 10 : 0 }]} 
+                  onPress={editandoId ? atualizarDevocional : salvarDevocional}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {editandoId ? 'Atualizar' : 'Salvar Devocional'}
+                  </Text>
+                </TouchableOpacity>
+
+                {editandoId && (
+                  <TouchableOpacity 
+                    style={[styles.saveButton, { flex: 1, backgroundColor: 'rgba(255, 60, 60, 0.15)', borderColor: 'rgba(255, 60, 60, 0.3)' }]} 
+                    onPress={() => {
+                      setTitle('');
+                      setContent('');
+                      setEditandoId(null);
+                    }}
+                  >
+                    <Text style={[styles.saveButtonText, { color: '#FF6B6B' }]}>Cancelar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             {/* Listagem do Histórico */}
-            <Text style={styles.historyTitle}>Meu Histórico</Text>
+            <Text style={styles.historyTitle}>Meus Devocionais</Text>
             <FlatList
-              data={devotionals}
+              data={historico}
               keyExtractor={(item) => item.id}
               renderItem={renderItem}
               showsVerticalScrollIndicator={false}
@@ -181,7 +306,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     color: '#FFFFFF',
     fontSize: 16,
-    minHeight: 100,
+    minHeight: 120,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
@@ -236,6 +361,13 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },

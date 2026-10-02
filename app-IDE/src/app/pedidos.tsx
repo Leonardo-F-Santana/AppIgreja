@@ -57,6 +57,7 @@ export default function PedidosScreen() {
           date: dateStr,
           status: data.status || 'pendente',
           timestamp: data.criadoEm?.toMillis() || 0,
+          resposta: data.resposta || null,
         };
       });
 
@@ -133,6 +134,7 @@ export default function PedidosScreen() {
     switch (status) {
       case 'orando': return '#4ade80'; // Verde
       case 'atendido': return '#60a5fa'; // Azul
+      case 'respondido': return '#4CAF50'; // Verde Pastoral
       default: return '#facc15'; // Amarelo (pendente)
     }
   };
@@ -141,6 +143,7 @@ export default function PedidosScreen() {
     switch (status) {
       case 'orando': return 'Em Oração';
       case 'atendido': return 'Atendido';
+      case 'respondido': return 'Respondido';
       default: return 'Pendente';
     }
   };
@@ -171,6 +174,14 @@ export default function PedidosScreen() {
         </TouchableOpacity>
       </View>
       <Text style={styles.historyText}>{item.text}</Text>
+
+      {/* Resposta Pastoral */}
+      {item.resposta && (
+        <View style={styles.respostaContainer}>
+          <Text style={styles.respostaTitulo}>✉️ Palavra de Encorajamento</Text>
+          <Text style={styles.respostaTexto}>{item.resposta}</Text>
+        </View>
+      )}
     </View>
   );
 
@@ -472,5 +483,26 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  // ─── Resposta Pastoral ──────────────────────────────────────────────────────
+  respostaContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  respostaTitulo: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  respostaTexto: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    fontStyle: 'italic',
+    lineHeight: 20,
   },
 });

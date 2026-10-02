@@ -143,6 +143,11 @@ export default function HomeScreen() {
   const [currentDate, setCurrentDate] = useState('');
   const [userName, setUserName] = useState('Membro');
   const [userEmail, setUserEmail] = useState('');
+  const [avisosExpandidos, setAvisosExpandidos] = useState<Record<string, boolean>>({});
+
+  const toggleAviso = (id: string) => {
+    setAvisosExpandidos(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // ─── Estados do Firestore ─────────────────────────────────────────────────
   const [avisoDestaque, setAvisoDestaque] = useState<Aviso | null>(null);
@@ -431,16 +436,26 @@ export default function HomeScreen() {
               <Text style={{ color: '#FFFFFF', fontStyle: 'italic', marginLeft: 10 }}>Nenhum aviso no momento</Text>
             ) : (
               avisosMural.map((aviso) => (
-                <View key={aviso.id} style={styles.avisoCard}>
+                <TouchableOpacity
+                  key={aviso.id}
+                  style={styles.avisoCard}
+                  onPress={() => toggleAviso(aviso.id)}
+                  activeOpacity={0.8}
+                >
                   <View style={styles.avisoIconContainer}>
                     <Feather name="bell" size={20} color="#FFFFFF" />
                   </View>
                   <View style={styles.avisoTextContainer}>
                     <Text style={styles.avisoTitle}>{aviso.titulo}</Text>
-                    <Text style={styles.avisoText}>{aviso.mensagem}</Text>
                     <Text style={styles.avisoDate}>{formatarData(aviso.dataCriacao)}</Text>
+                    <Text
+                      style={styles.avisoText}
+                      numberOfLines={avisosExpandidos[aviso.id] ? undefined : 3}
+                    >
+                      {aviso.mensagem}
+                    </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -449,7 +464,7 @@ export default function HomeScreen() {
       </SafeAreaView>
 
       {/* TabBar Inferior Customizada */}
-      <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 8 }]}>
+      <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 4 }]}>
         <View style={styles.tabBarLeft}>
           <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/cultos')}>
             <Feather name="users" size={22} color="#000000" />
@@ -656,7 +671,7 @@ const styles = StyleSheet.create({
   },
   avisoCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(25, 30, 40, 0.95)',
     borderRadius: 12,
     padding: 15,
     marginBottom: 10,
@@ -672,6 +687,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+    alignSelf: 'flex-start',
+    marginTop: 5,
   },
   avisoTextContainer: {
     flex: 1,
@@ -685,12 +702,12 @@ const styles = StyleSheet.create({
   avisoText: {
     color: '#CCCCCC',
     fontSize: 13,
+    lineHeight: 20,
   },
   avisoDate: {
-    color: '#999999',
-    fontSize: 11,
-    marginTop: 6,
-    alignSelf: 'flex-end',
+    color: '#A0A0A0',
+    fontSize: 12,
+    marginBottom: 6,
   },
   tabBarContainer: {
     position: 'absolute',
@@ -703,8 +720,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: 10,
-    paddingTop: 8,
-    minHeight: 55,
+    paddingTop: 6,
+    minHeight: 48,
     elevation: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -732,7 +749,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 10,
     color: '#000000',
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: '600',
   },
   fabWhatsApp: {

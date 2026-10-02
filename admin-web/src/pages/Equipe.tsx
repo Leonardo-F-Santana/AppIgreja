@@ -18,6 +18,7 @@ const ROLES_DISPONIVEIS = [
   { value: 'tesouraria', label: 'Tesouraria' },
   { value: 'secretaria', label: 'Secretaria' },
   { value: 'lider', label: 'Líder' },
+  { value: 'midia', label: 'Mídia' },
   { value: 'membro', label: 'Membro' },
 ];
 
@@ -56,6 +57,7 @@ function RoleBadge({ role }: { role: string }) {
     tesouraria: 'bg-amber-100 text-amber-700',
     secretaria: 'bg-sky-100 text-sky-700',
     lider: 'bg-blue-100 text-blue-700',
+    midia: 'bg-pink-100 text-pink-700',
     membro: 'bg-gray-100 text-gray-500',
   };
 

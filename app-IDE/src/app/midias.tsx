@@ -10,6 +10,8 @@ import {
   StatusBar,
   Dimensions,
   Modal,
+  Share,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5, Feather } from '@expo/vector-icons';
@@ -20,22 +22,51 @@ const COLUMN_COUNT = 2;
 const SPACING = 15;
 const ITEM_WIDTH = (width - SPACING * 3) / COLUMN_COUNT;
 
-const mockGallery = [
-  { id: '0', source: require('../../assets/Img/M0.jpg') },
-  { id: '1', source: require('../../assets/Img/M1.jpg') },
-  { id: '2', source: require('../../assets/Img/M2.jpg') },
-  { id: '3', source: require('../../assets/Img/M3.jpeg') },
-  { id: '4', source: require('../../assets/Img/M4.jpeg') },
-  { id: '5', source: require('../../assets/Img/M5.jpg') },
-  { id: '6', source: require('../../assets/Img/M6.jpeg') },
-  { id: '7', source: require('../../assets/Img/M7.jpg') },
-  { id: '8', source: require('../../assets/Img/M8.jpg') },
-  { id: '9', source: require('../../assets/Img/M9.jpeg') },
+const albunsMock = [
+  {
+    id: '1',
+    titulo: 'Culto de Celebração',
+    qtd: '5 fotos',
+    cover: require('../../assets/Img/M0.jpg'),
+    fotos: [
+      { id: '101', source: require('../../assets/Img/M0.jpg') },
+      { id: '102', source: require('../../assets/Img/M1.jpg') },
+      { id: '103', source: require('../../assets/Img/M2.jpg') },
+      { id: '104', source: require('../../assets/Img/M3.jpeg') },
+      { id: '105', source: require('../../assets/Img/M4.jpeg') },
+    ],
+  },
+  {
+    id: '2',
+    titulo: 'Retiro Espiritual',
+    qtd: '5 fotos',
+    cover: require('../../assets/Img/M5.jpg'),
+    fotos: [
+      { id: '106', source: require('../../assets/Img/M5.jpg') },
+      { id: '107', source: require('../../assets/Img/M6.jpeg') },
+      { id: '108', source: require('../../assets/Img/M7.jpg') },
+      { id: '109', source: require('../../assets/Img/M8.jpg') },
+      { id: '110', source: require('../../assets/Img/M9.jpeg') },
+    ],
+  },
 ];
 
 export default function MidiasScreen() {
   const router = useRouter();
   const [imagemExpandida, setImagemExpandida] = useState<any>(null);
+  const [albumAtivo, setAlbumAtivo] = useState<any>(null);
+
+  const compartilharImagem = async () => {
+    if (!imagemExpandida) return;
+    try {
+      await Share.share({
+        message: 'Veja este momento da nossa igreja! ⛪ ' + imagemExpandida,
+        url: imagemExpandida
+      });
+    } catch (error) {
+      // Falhas ou cancelamentos ignorados silenciosamente
+    }
+  };
 
   const handleOpenLink = (url: string) => {
     Linking.openURL(url).catch(() => {
@@ -91,44 +122,95 @@ export default function MidiasScreen() {
         <View style={{ width: 28 }} />
       </View>
 
-      <FlatList
-        data={mockGallery}
-        keyExtractor={(item) => item.id}
-        numColumns={COLUMN_COUNT}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        columnWrapperStyle={styles.columnWrapper}
-        ListHeaderComponent={renderHeader}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.imageContainer}
-            activeOpacity={0.8}
-            onPress={() => setImagemExpandida(item.source)}
-          >
-            <Image
-              source={item.source as any}
-              style={styles.galleryImage}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
-        )}
-      />
+      {!albumAtivo ? (
+        <FlatList
+          data={albunsMock}
+          keyExtractor={(item) => item.id}
+          numColumns={COLUMN_COUNT}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          columnWrapperStyle={styles.columnWrapper}
+          ListHeaderComponent={renderHeader}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.albumCard}
+              activeOpacity={0.8}
+              onPress={() => setAlbumAtivo(item)}
+            >
+              <Image source={item.cover} style={styles.albumCover} />
+              <View style={styles.albumTextContainer}>
+                <Text style={styles.albumTitle} numberOfLines={1}>{item.titulo}</Text>
+                <Text style={styles.albumCount}>{item.qtd}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      ) : (
+        <View style={{ flex: 1 }}>
+          <View style={styles.albumHeader}>
+            <TouchableOpacity onPress={() => setAlbumAtivo(null)} style={styles.backToAlbumsButton}>
+              <Feather name="arrow-left" size={20} color="#FFFFFF" />
+              <Text style={styles.backToAlbumsText}>Voltar para Álbuns</Text>
+            </TouchableOpacity>
+            <Text style={styles.activeAlbumTitle}>{albumAtivo.titulo}</Text>
+          </View>
+          <FlatList
+            data={albumAtivo.fotos}
+            keyExtractor={(item) => item.id}
+            numColumns={COLUMN_COUNT}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            columnWrapperStyle={styles.columnWrapper}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.imageContainer}
+                activeOpacity={0.8}
+                onPress={() => setImagemExpandida(item.source)}
+              >
+                <Image
+                  source={item.source as any}
+                  style={styles.galleryImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      )}
 
       {/* Modal Lightbox */}
       <Modal animationType="fade" transparent={true} visible={!!imagemExpandida}>
-        <View style={styles.modalBackground}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setImagemExpandida(null)}
-          >
-            <Feather name="x" size={30} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Image
-            source={imagemExpandida}
-            style={styles.fullImage}
-            resizeMode="contain"
-          />
-        </View>
+        <TouchableOpacity 
+          style={styles.modalRoot} 
+          activeOpacity={1} 
+          onPress={() => setImagemExpandida(null)}
+        >
+          <SafeAreaView style={styles.modalSafeArea}>
+            {/* Header (Topo) */}
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setImagemExpandida(null)}>
+                <Feather name="x" size={30} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Área da Imagem (Meio) */}
+            <TouchableWithoutFeedback>
+              <Image
+                source={imagemExpandida}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            </TouchableWithoutFeedback>
+
+            {/* Footer (Base) */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.sharePillButton} onPress={compartilharImagem}>
+                <Feather name="share-2" size={20} color="#FFFFFF" />
+                <Text style={styles.sharePillText}>Compartilhar</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
@@ -212,21 +294,89 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  modalBackground: {
+  albumCard: {
+    width: ITEM_WIDTH,
+    marginBottom: SPACING,
+  },
+  albumCover: {
+    width: ITEM_WIDTH,
+    height: ITEM_WIDTH,
+    borderRadius: 12,
+    resizeMode: 'cover',
+    borderWidth: 2.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  albumTextContainer: {
+    paddingTop: 8,
+  },
+  albumTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  albumCount: {
+    fontSize: 14,
+    color: '#AAAAAA',
+    marginTop: 2,
+  },
+  albumHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
+  },
+  backToAlbumsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  backToAlbumsText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  activeAlbumTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  modalRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.95)',
+  },
+  modalSafeArea: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  modalFooter: {
+    padding: 20,
     alignItems: 'center',
   },
-  closeButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 10,
-    padding: 10,
+  sharePillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 30,
+  },
+  sharePillText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
   },
   fullImage: {
     width: '100%',
-    height: '80%',
+    flex: 1,
   },
 });
