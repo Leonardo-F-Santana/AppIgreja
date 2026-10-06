@@ -4,7 +4,19 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 // Tipos de cargo disponíveis no sistema
-export type UserRole = 'admin' | 'tesouraria' | 'secretaria' | 'lider' | 'midia';
+export type UserRole = 'admin' | 'tesouraria' | 'secretaria' | 'recepcao' | 'midia';
+
+const ROLES_VALIDOS: UserRole[] = ['admin', 'tesouraria', 'secretaria', 'recepcao', 'midia'];
+
+// Cargos antigos que foram renomeados (compatibilidade com documentos já salvos no Firestore)
+const ROLES_LEGADOS: Record<string, UserRole> = {
+  lider: 'recepcao',
+};
+
+// Rota inicial de cada cargo (usada após login e em redirecionamentos de acesso negado)
+export function getRotaInicial(role?: string): string {
+  return role === 'recepcao' ? '/visitantes' : '/dashboard';
+}
 
 // Interface do utilizador com role
 export interface AppUser {
@@ -63,8 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            if (data.role && ['admin', 'tesouraria', 'secretaria', 'lider', 'midia'].includes(data.role)) {
-              role = data.role as UserRole;
+            const roleSalvo = ROLES_LEGADOS[data.role] ?? data.role;
+            if (roleSalvo && ROLES_VALIDOS.includes(roleSalvo)) {
+              role = roleSalvo as UserRole;
             }
             if (data.nome) {
               nome = data.nome;

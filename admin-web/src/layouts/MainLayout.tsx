@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, Bell, LogOut, 
   Users, User, HandHeart, Menu, X, Wallet, ShieldCheck, Church, UserPlus, GraduationCap,
-  Image
+  Image, Activity
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import type { UserRole } from '../contexts/AuthContext';
@@ -12,18 +12,27 @@ import type { UserRole } from '../contexts/AuthContext';
 // RBAC — Mapa centralizado de permissões por menu
 // ────────────────────────────────────────────────
 const MENU_PERMISSIONS: Record<string, UserRole[]> = {
-  'Visão Geral':      ['admin', 'secretaria', 'tesouraria', 'lider'],
-  'Eventos':          ['admin', 'secretaria', 'lider', 'midia'],
-  'Cultos':           ['admin', 'secretaria', 'lider', 'midia'],
-  'Membros':          ['admin', 'secretaria', 'tesouraria', 'lider'],
-  'Visitantes':       ['admin', 'secretaria'],
-  'Células':          ['admin', 'secretaria', 'lider'],
-  'Escolas':          ['admin', 'secretaria', 'lider'],
-  'Avisos':           ['admin', 'secretaria', 'lider', 'midia'],
+  'Visão Geral':      ['admin', 'secretaria', 'tesouraria'],
+  'Eventos':          ['admin', 'secretaria', 'recepcao', 'midia'],
+  'Cultos':           ['admin', 'secretaria', 'recepcao', 'midia'],
+  'Membros':          ['admin', 'secretaria', 'tesouraria'],
+  'Visitantes':       ['admin', 'secretaria', 'recepcao'],
+  'Células':          ['admin', 'secretaria', 'recepcao'],
+  'Escolas':          ['admin', 'secretaria', 'recepcao'],
+  'Avisos':           ['admin', 'secretaria', 'recepcao', 'midia'],
   'Mídias':           ['admin', 'midia'],
   'Financeiro':       ['admin', 'tesouraria'],
-  'Pedidos de Oração':['admin', 'secretaria', 'lider'],
+  'Pedidos de Oração':['admin', 'secretaria'],
   'Equipe':           ['admin'],
+  'Logs de Auditoria':['admin'],
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  tesouraria: 'Tesouraria',
+  secretaria: 'Secretaria',
+  recepcao: 'Recepção',
+  midia: 'Mídia',
 };
 
 export default function MainLayout() {
@@ -44,6 +53,7 @@ export default function MainLayout() {
     { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro' },
     { path: '/pedidos', icon: <HandHeart size={20} />, label: 'Pedidos de Oração' },
     { path: '/equipe', icon: <ShieldCheck size={20} />, label: 'Equipe' },
+    { path: '/logs', icon: <Activity size={20} />, label: 'Logs de Auditoria' },
   ];
 
   // Filtra itens do menu com base no role do utilizador (RBAC)
@@ -82,7 +92,7 @@ export default function MainLayout() {
                 {user?.nome || user?.email?.split('@')[0] || 'Administrador'}
               </span>
               <span className="text-[10px] font-bold bg-blue-800/60 text-blue-300 py-0.5 px-2 rounded w-max uppercase tracking-wider">
-                {user?.role || 'Admin'}
+                {(user?.role && ROLE_LABELS[user.role]) || user?.role || 'Admin'}
               </span>
             </div>
           </div>

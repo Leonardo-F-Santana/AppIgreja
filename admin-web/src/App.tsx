@@ -19,6 +19,10 @@ import TurmaDetalhesPage from './pages/TurmaDetalhesPage';
 import Equipe from './pages/Equipe';
 import VisitantePublicoPage from './pages/VisitantePublicoPage';
 import MidiasPage from './pages/MidiasPage';
+import LogsAuditoriaPage from './pages/LogsAuditoriaPage';
+
+// Cargos bloqueados nas rotas que a Recepção não deve acessar
+const SEM_RECEPCAO = ['recepcao'];
 
 function App() {
   return (
@@ -31,32 +35,38 @@ function App() {
           <Route path="/visitante/cadastro" element={<VisitantePublicoPage />} />
 
           {/* Rotas protegidas envelopadas pelo MainLayout */}
+          {/* Recepção: acesso apenas a Visitantes, Células e Meu Perfil */}
           <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard" element={<ProtectedRoute deniedRoles={SEM_RECEPCAO}><Dashboard /></ProtectedRoute>} />
             <Route path="avisos" element={<Avisos />} />
             <Route path="eventos" element={<EventosPage />} />
             <Route path="celulas" element={<CelulasPage />} />
-            <Route path="doacoes" element={<DoacoesPage />} />
-            <Route path="pedidos" element={<PedidosPage />} />
-            <Route path="membros" element={<MembrosPage />} />
+            <Route path="doacoes" element={<ProtectedRoute deniedRoles={SEM_RECEPCAO}><DoacoesPage /></ProtectedRoute>} />
+            <Route path="pedidos" element={<ProtectedRoute deniedRoles={SEM_RECEPCAO}><PedidosPage /></ProtectedRoute>} />
+            <Route path="membros" element={<ProtectedRoute deniedRoles={SEM_RECEPCAO}><MembrosPage /></ProtectedRoute>} />
             <Route path="visitantes" element={<VisitantesPage />} />
             <Route path="perfil" element={<PerfilPage />} />
             <Route path="escolas" element={
-              <ProtectedRoute allowedRoles={['admin', 'lider', 'secretario', 'secretaria']}>
+              <ProtectedRoute allowedRoles={['admin', 'secretario', 'secretaria', 'recepcao']}>
                 <EscolasPage />
               </ProtectedRoute>
             } />
             <Route path="escolas/:turmaId" element={
-              <ProtectedRoute allowedRoles={['admin', 'lider', 'secretario', 'secretaria']}>
+              <ProtectedRoute allowedRoles={['admin', 'secretario', 'secretaria', 'recepcao']}>
                 <TurmaDetalhesPage />
               </ProtectedRoute>
             } />
             <Route path="cultos" element={<CultosPage />} />
-            <Route path="midias" element={<MidiasPage />} />
+            <Route path="midias" element={<ProtectedRoute deniedRoles={SEM_RECEPCAO}><MidiasPage /></ProtectedRoute>} />
             <Route path="financeiro" element={
               <ProtectedRoute allowedRoles={['admin', 'tesouraria']}>
                 <Financeiro />
+              </ProtectedRoute>
+            } />
+            <Route path="logs" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <LogsAuditoriaPage />
               </ProtectedRoute>
             } />
             <Route path="equipe" element={

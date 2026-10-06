@@ -19,6 +19,7 @@ export interface Visitante {
   dataVisita: string;
   quemConvidou?: string;
   status: string;
+  etapaConsolidacao?: number;
   createdAt?: Timestamp | null;
 }
 
@@ -57,6 +58,7 @@ export function ouvirVisitantes(callback: (visitantes: Visitante[]) => void): ()
           dataVisita: data.dataVisita || "",
           quemConvidou: data.quemConvidou || "",
           status: data.status || "Novo",
+          etapaConsolidacao: data.etapaConsolidacao || 0,
           createdAt: data.createdAt || null,
         } as Visitante;
       });
@@ -76,6 +78,7 @@ export function ouvirVisitantes(callback: (visitantes: Visitante[]) => void): ()
               dataVisita: data.dataVisita || "",
               quemConvidou: data.quemConvidou || "",
               status: data.status || "Novo",
+              etapaConsolidacao: data.etapaConsolidacao || 0,
               createdAt: data.createdAt || null,
             } as Visitante;
           });

@@ -108,5 +108,12 @@ service cloud.firestore {
       // Apenas administradores podem apagar pedidos.
       allow delete: if isAdmin();
     }
+
+    // Coleção: logs_auditoria
+    match /logs_auditoria/{document=**} {
+      allow create: if isAuth();
+      allow read: if isAdmin();
+      allow update, delete: if false; // Logs são imutáveis
+    }
   }
 }

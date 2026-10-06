@@ -1,13 +1,15 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, getRotaInicial } from '../contexts/AuthContext';
 import type { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: string[];
+  /** Cargos explicitamente bloqueados nesta rota */
+  deniedRoles?: string[];
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, allowedRoles, deniedRoles }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
 
   // Enquanto carrega, mostra indicador de loading
@@ -27,9 +29,13 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     return <Navigate to="/login" replace />;
   }
 
-  // Se allowedRoles foi definido e o role do utilizador não está incluído
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+  // Se allowedRoles foi definido e o role do utilizador não está incluído,
+  // ou se o role está explicitamente bloqueado
+  if (
+    (allowedRoles && !allowedRoles.includes(user.role)) ||
+    (deniedRoles && deniedRoles.includes(user.role))
+  ) {
+    return <Navigate to={getRotaInicial(user.role)} replace />;
   }
 
   return <>{children}</>;

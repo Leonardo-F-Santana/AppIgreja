@@ -12,6 +12,15 @@ import {
   type Visitante,
 } from '../services/visitantesService';
 
+// ─── Funil de Consolidação ────────────────────────────────────────────────────
+const MENSAGENS_CONSOLIDACAO = [
+  { etapa: 0, titulo: 'Semana 1 - Seg', texto: 'Olá [Nome]! Que alegria ter você com a gente neste domingo. Como foi a sua experiência?' },
+  { etapa: 1, titulo: 'Semana 1 - Qui', texto: 'Olá [Nome], passando para desejar uma ótima semana e lembrar que nossos cultos acontecem no final de semana!' },
+  { etapa: 2, titulo: 'Semana 1 - Sab', texto: 'Oi [Nome]! Amanhã temos culto e adoraríamos ter a sua presença novamente. Vamos?' },
+  { etapa: 3, titulo: 'Semana 2 - Seg', texto: 'Olá [Nome], esperamos que tenha tido um final de semana abençoado!' },
+  // ... a equipe preencherá as 12 etapas
+];
+
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner() {
   return (
@@ -143,6 +152,7 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading }: Modal
       dataVisita: form.dataVisita,
       quemConvidou: form.quemConvidou?.trim() || '',
       status: form.status,
+      etapaConsolidacao: inicial?.etapaConsolidacao || 0,
     });
   };
 
@@ -399,26 +409,43 @@ export default function VisitantesPage() {
   };
 
   // ─── Ação Rápida de Boas-Vindas (WhatsApp) ──────────────────────────────────
-  const abrirWhatsApp = (nome: string, telefone: string) => {
-    let numeroLimpo = (telefone || '').replace(/\D/g, '');
-
-    // Mínimo: DDD (2) + número (8 fixo / 9 celular)
-    if (numeroLimpo.length < 10) {
-      setToast({ mensagem: 'Telefone inválido ou ausente para WhatsApp.', tipo: 'erro' });
+  const enviarMensagemConsolidacao = async (visitante: Visitante) => {
+    const etapaAtual = visitante.etapaConsolidacao || 0;
+    
+    if (etapaAtual >= 12 || etapaAtual >= MENSAGENS_CONSOLIDACAO.length) {
+      alert("Consolidação concluída para este visitante ou mensagem não configurada.");
       return;
     }
 
-    // Adiciona o DDI do Brasil caso não esteja presente
-    if (numeroLimpo.length <= 11) {
+    const mensagemObj = MENSAGENS_CONSOLIDACAO[etapaAtual];
+    const primeiroNome = (visitante.nome || '').trim().split(' ')[0];
+    const textoFinal = mensagemObj.texto.replace('[Nome]', primeiroNome);
+
+    let numeroLimpo = (visitante.telefone || '').replace(/\D/g, '');
+    if (numeroLimpo.length >= 10 && numeroLimpo.length <= 11) {
       numeroLimpo = `55${numeroLimpo}`;
     }
 
-    const primeiroNome = (nome || '').trim().split(' ')[0];
-    const mensagem = encodeURIComponent(
-      `Olá, ${primeiroNome}! Que alegria ter você com a gente. Como foi a sua experiência em nosso culto?`
-    );
+    const mensagemEncode = encodeURIComponent(textoFinal);
+    window.open(`https://wa.me/${numeroLimpo}?text=${mensagemEncode}`, '_blank', 'noopener,noreferrer');
 
-    window.open(`https://wa.me/${numeroLimpo}?text=${mensagem}`, '_blank', 'noopener,noreferrer');
+    if (window.confirm('Mensagem enviada com sucesso? Clicar em OK avançará este visitante para a próxima etapa.')) {
+      try {
+        if (visitante.id) {
+          await editarVisitante(visitante.id, { 
+            nome: visitante.nome,
+            telefone: visitante.telefone,
+            dataVisita: visitante.dataVisita,
+            quemConvidou: visitante.quemConvidou,
+            status: visitante.status,
+            etapaConsolidacao: etapaAtual + 1 
+          });
+          setToast({ mensagem: `Avançou para etapa ${etapaAtual + 1}.`, tipo: 'sucesso' });
+        }
+      } catch (error) {
+        setToast({ mensagem: 'Erro ao atualizar etapa.', tipo: 'erro' });
+      }
+    }
   };
 
   return (
@@ -443,6 +470,7 @@ export default function VisitantesPage() {
             dataVisita: modal.visitante.dataVisita,
             quemConvidou: modal.visitante.quemConvidou,
             status: modal.visitante.status,
+            etapaConsolidacao: modal.visitante.etapaConsolidacao,
           }}
           onClose={() => setModal({ tipo: 'nenhum' })}
           onSalvar={handleEditar}
@@ -662,12 +690,19 @@ export default function VisitantesPage() {
                     
                     <div className="flex gap-2">
                       <button
-                        onClick={() => abrirWhatsApp(visitante.nome, visitante.telefone)}
+                        onClick={() => enviarMensagemConsolidacao(visitante)}
                         disabled={!visitante.telefone}
-                        className="p-2.5 text-[#25D366] bg-green-50 hover:bg-[#25D366] hover:text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-green-50 disabled:hover:text-[#25D366]"
-                        title="Enviar boas-vindas no WhatsApp"
+                        className={`px-3 py-2 flex items-center gap-1.5 text-xs font-bold rounded-lg transition-colors ${
+                          (visitante.etapaConsolidacao || 0) >= 12
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-green-50 text-[#25D366] hover:bg-[#25D366] hover:text-white'
+                        } disabled:opacity-40 disabled:cursor-not-allowed`}
+                        title="Funil de Consolidação"
                       >
-                        <WhatsAppIcon size={18} />
+                        <WhatsAppIcon size={14} />
+                        {(visitante.etapaConsolidacao || 0) >= 12 
+                          ? 'Consolidado' 
+                          : `Enviar: ${MENSAGENS_CONSOLIDACAO[visitante.etapaConsolidacao || 0]?.titulo || '...'}`}
                       </button>
                       <button
                         onClick={() => setModal({ tipo: 'editar', visitante })}
@@ -721,12 +756,19 @@ export default function VisitantesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => abrirWhatsApp(visitante.nome, visitante.telefone)}
+                            onClick={() => enviarMensagemConsolidacao(visitante)}
                             disabled={!visitante.telefone}
-                            className="p-1.5 text-[#25D366] hover:bg-[#25D366] hover:text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#25D366]"
-                            title="Enviar boas-vindas no WhatsApp"
+                            className={`px-3 py-1.5 flex items-center gap-1.5 text-xs font-bold rounded-lg transition-colors ${
+                              (visitante.etapaConsolidacao || 0) >= 12
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-green-50 text-[#25D366] hover:bg-[#25D366] hover:text-white'
+                            } disabled:opacity-40 disabled:cursor-not-allowed`}
+                            title="Funil de Consolidação"
                           >
-                            <WhatsAppIcon size={18} />
+                            <WhatsAppIcon size={14} />
+                            {(visitante.etapaConsolidacao || 0) >= 12 
+                              ? 'Consolidado' 
+                              : `Enviar: ${MENSAGENS_CONSOLIDACAO[visitante.etapaConsolidacao || 0]?.titulo || '...'}`}
                           </button>
                           <button
                             onClick={() => setModal({ tipo: 'editar', visitante })}

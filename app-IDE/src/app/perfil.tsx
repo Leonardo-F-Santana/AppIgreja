@@ -41,7 +41,8 @@ function getInitials(name: string): string {
 function formatRole(role: string): string {
   const roles: Record<string, string> = {
     admin: 'Administrador',
-    lider: 'Líder',
+    lider: 'Recepção', // cargo legado, renomeado para 'recepcao'
+    recepcao: 'Recepção',
     membro: 'Membro',
   };
   return roles[role?.toLowerCase()] || role || 'Membro';

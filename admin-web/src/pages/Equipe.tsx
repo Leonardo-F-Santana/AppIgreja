@@ -17,7 +17,7 @@ const ROLES_DISPONIVEIS = [
   { value: 'admin', label: 'Admin' },
   { value: 'tesouraria', label: 'Tesouraria' },
   { value: 'secretaria', label: 'Secretaria' },
-  { value: 'lider', label: 'Líder' },
+  { value: 'recepcao', label: 'Recepção' },
   { value: 'midia', label: 'Mídia' },
   { value: 'membro', label: 'Membro' },
 ];
@@ -56,16 +56,17 @@ function RoleBadge({ role }: { role: string }) {
     admin: 'bg-purple-100 text-purple-700',
     tesouraria: 'bg-amber-100 text-amber-700',
     secretaria: 'bg-sky-100 text-sky-700',
-    lider: 'bg-blue-100 text-blue-700',
+    recepcao: 'bg-emerald-100 text-emerald-700',
     midia: 'bg-pink-100 text-pink-700',
     membro: 'bg-gray-100 text-gray-500',
   };
 
   const cor = cores[role] || cores.membro;
+  const label = ROLES_DISPONIVEIS.find((r) => r.value === role)?.label || role;
 
   return (
     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${cor}`}>
-      {role}
+      {label}
     </span>
   );
 }
@@ -196,7 +197,8 @@ export default function Equipe() {
               </thead>
               <tbody>
                 {usuariosFiltrados.map((usuario) => {
-                  const roleAtual = usuario.role || 'membro';
+                  // 'lider' foi renomeado para 'recepcao' (compatibilidade com registros antigos)
+                  const roleAtual = usuario.role === 'lider' ? 'recepcao' : (usuario.role || 'membro');
                   const isCurrentUser = usuario.id === currentUser?.uid;
 
                   return (
