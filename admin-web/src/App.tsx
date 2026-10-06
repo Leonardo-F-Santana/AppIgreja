@@ -20,6 +20,7 @@ import Equipe from './pages/Equipe';
 import VisitantePublicoPage from './pages/VisitantePublicoPage';
 import MidiasPage from './pages/MidiasPage';
 import LogsAuditoriaPage from './pages/LogsAuditoriaPage';
+import CadastroPage from './pages/CadastroPage';
 
 // Cargos bloqueados nas rotas que a Recepção não deve acessar
 const SEM_RECEPCAO = ['recepcao'];
@@ -30,6 +31,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<CadastroPage />} />
 
           {/* Rota pública de autoatendimento — FORA do ProtectedRoute e MainLayout */}
           <Route path="/visitante/cadastro" element={<VisitantePublicoPage />} />

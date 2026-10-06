@@ -4,9 +4,9 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 // Tipos de cargo disponíveis no sistema
-export type UserRole = 'admin' | 'tesouraria' | 'secretaria' | 'recepcao' | 'midia';
+export type UserRole = 'admin' | 'tesouraria' | 'secretaria' | 'recepcao' | 'midia' | 'membro';
 
-const ROLES_VALIDOS: UserRole[] = ['admin', 'tesouraria', 'secretaria', 'recepcao', 'midia'];
+const ROLES_VALIDOS: UserRole[] = ['admin', 'tesouraria', 'secretaria', 'recepcao', 'midia', 'membro'];
 
 // Cargos antigos que foram renomeados (compatibilidade com documentos já salvos no Firestore)
 const ROLES_LEGADOS: Record<string, UserRole> = {
