@@ -19,6 +19,13 @@ import { Feather } from '@expo/vector-icons';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import {
+  buscarEmailPorUsername,
+  garantirMapeamentoUsername,
+  normalizarUsername,
+  usernameDisponivel,
+  usernameValido,
+} from '../services/usernameService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useSharedValue,
@@ -63,20 +70,18 @@ export default function AuthScreen() {
     try {
       let finalEmail = loginIdentifier.trim().toLowerCase();
 
-      // Se não tem '@', assumimos que é um nome de usuário e buscamos no banco
+      // Se não tem '@', assumimos que é um nome de usuário e resolvemos o e-mail
+      // pela coleção pública de lookup usernames/{usernameLogin} (a coleção 'users' é privada).
       if (!finalEmail.includes('@')) {
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('username', '==', finalEmail));
-        const querySnapshot = await getDocs(q);
+        const emailEncontrado = await buscarEmailPorUsername(finalEmail);
 
-        if (querySnapshot.empty) {
+        if (!emailEncontrado) {
           Alert.alert('Falha no Login', 'Usuário não encontrado.');
           setIsLoading(false);
           return;
         }
 
-        // Pega o e-mail real associado a esse username
-        finalEmail = querySnapshot.docs[0].data().email;
+        finalEmail = emailEncontrado;
       }
 
       await signInWithEmailAndPassword(auth, finalEmail, password);
@@ -149,8 +154,21 @@ export default function AuthScreen() {
       return;
     }
 
+    const usernameLogin = normalizarUsername(username);
+    if (!usernameValido(usernameLogin)) {
+      Alert.alert('Erro', 'O nome de usuário não pode conter "/".');
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Verifica se o username está livre ANTES de criar a conta no Auth
+      if (!(await usernameDisponivel(usernameLogin))) {
+        Alert.alert('Erro', 'Este nome de usuário já está em uso. Escolha outro.');
+        setIsLoading(false);
+        return;
+      }
+
       console.log('Tentando criar usuário no Auth...');
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const user = userCredential.user;
@@ -171,17 +189,29 @@ export default function AuthScreen() {
             uid: user.uid,
             acessoApp: true,
             username: username.trim().toLowerCase(),
+            usernameLogin: username.trim().toLowerCase(),
           });
           console.log('Mesclagem de conta realizada com sucesso!');
         } else {
           // Cenário B: Usuário novo - Criação Normal
           await setDoc(doc(db, 'users', user.uid), {
             username: username.trim().toLowerCase(),
+            usernameLogin: username.trim().toLowerCase(),
             email: finalEmail,
             acessoApp: true,
             createdAt: new Date(),
           });
           console.log('Nova conta salva no Firestore com sucesso!');
+        }
+
+        // Regista o username na coleção pública de lookup (necessário para o login por username)
+        try {
+          const resultado = await garantirMapeamentoUsername(usernameLogin, user.uid, finalEmail);
+          if (resultado === 'conflito') {
+            console.warn(`Username "${usernameLogin}" foi reservado por outra conta durante o cadastro.`);
+          }
+        } catch (err) {
+          console.warn('Não foi possível registar o username de login:', err);
         }
       })();
       

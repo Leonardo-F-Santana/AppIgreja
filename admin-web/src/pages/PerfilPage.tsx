@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
+import { auth, db } from '../config/firebase';
+import { updateProfile } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { User, Phone, Mail, Shield, Save, CheckCircle, AlertTriangle, X } from 'lucide-react';
 
@@ -40,7 +41,7 @@ function Toast({ mensagem, tipo, onClose }: ToastProps) {
 }
 
 export default function PerfilPage() {
-  const { user } = useAuth();
+  const { user, atualizarNome } = useAuth();
   
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -78,15 +79,46 @@ export default function PerfilPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.uid) return;
-    
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setToast({ mensagem: 'Sessão expirada. Faça login novamente.', tipo: 'erro' });
+      return;
+    }
+
+    const novoNome = nome.trim();
+    if (!novoNome) {
+      setToast({ mensagem: 'O nome não pode ficar vazio.', tipo: 'erro' });
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const docRef = doc(db, 'users', user.uid);
+      const docRef = doc(db, 'users', currentUser.uid);
+
+      // Preserva o identificador de login legado antes de sobrescrever 'username'.
+      // O app móvel faz login por username em minúsculas; a partir de agora esse
+      // identificador vive em 'usernameLogin' e 'username' passa a ser o nome de exibição.
+      const snap = await getDoc(docRef);
+      const dadosAtuais: Record<string, any> = snap.data() ?? {};
+      const preservarLogin =
+        !dadosAtuais.usernameLogin && dadosAtuais.username
+          ? { usernameLogin: String(dadosAtuais.username).trim().toLowerCase() }
+          : {};
+
+      // Passo 1 (Auth): displayName no motor de autenticação
+      await updateProfile(currentUser, { displayName: novoNome });
+
+      // Passo 2 (Firestore): documento central do utilizador (lido pelo Web e pelo App)
       await updateDoc(docRef, {
-        nome: nome.trim(),
-        telefone: telefone.replace(/\D/g, '') // Salva apenas os números
+        nome: novoNome,
+        username: novoNome, // campo lido pelo app móvel (home, perfil, editar-perfil)
+        telefone: telefone.replace(/\D/g, ''), // Salva apenas os números
+        ...preservarLogin,
       });
+
+      // Passo 3 (Estado local): reflete de imediato no cabeçalho do Web Admin
+      atualizarNome(novoNome);
+
       setToast({ mensagem: 'Perfil atualizado com sucesso!', tipo: 'sucesso' });
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);

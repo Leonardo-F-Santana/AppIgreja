@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { IdCard } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import {
@@ -132,8 +133,6 @@ const getSaudacao = () => {
   return 'Boa noite';
 };
 
-const mockUserName = "Leonardo";
-
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -208,29 +207,36 @@ export default function HomeScreen() {
 
   // ─── Buscar Dados do Usuário ──────────────────────────────────────────────
   useEffect(() => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
-
-    const unsubscribe = onSnapshot(
-      doc(db, 'users', currentUser.uid),
-      (userDoc) => {
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserName(data.username || currentUser.email?.split('@')[0] || 'Membro');
-          setUserEmail(data.email || currentUser.email || '');
-        } else {
-          setUserName(currentUser.email?.split('@')[0] || 'Membro');
-          setUserEmail(currentUser.email || '');
-        }
-      },
-      (error) => {
-        console.error('Erro ao buscar dados do usuário:', error);
-        setUserName(currentUser.email?.split('@')[0] || 'Membro');
-        setUserEmail(currentUser.email || '');
+    let unsubscribe: any = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        if (unsubscribe) unsubscribe();
+        return;
       }
-    );
+      unsubscribe = onSnapshot(
+        doc(db, 'users', user.uid),
+        (userDoc) => {
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUserName(data.nome || data.username || user.displayName || user.email?.split('@')[0] || 'Membro');
+            setUserEmail(data.email || user.email || '');
+          } else {
+            setUserName(user.displayName || user.email?.split('@')[0] || 'Membro');
+            setUserEmail(user.email || '');
+          }
+        },
+        (error) => {
+          console.error('Erro ao buscar dados do usuário:', error);
+          setUserName(user.displayName || user.email?.split('@')[0] || 'Membro');
+          setUserEmail(user.email || '');
+        }
+      );
+    });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // ─── Notificações Push ────────────────────────────────────────────────────
@@ -258,68 +264,98 @@ export default function HomeScreen() {
 
   // ─── Firestore: Aviso em Destaque (último aviso) ──────────────────────────
   useEffect(() => {
-    const avisosRef = collection(db, 'avisos');
-    const q = query(avisosRef, orderBy('dataCriacao', 'desc'), limit(1));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
-        setAvisoDestaque({ id: doc.id, ...doc.data() } as Aviso);
-      } else {
-        setAvisoDestaque(null);
+    let unsubscribe: any = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        if (unsubscribe) unsubscribe();
+        return;
       }
-    }, (error) => {
-      console.error('Erro ao buscar avisos:', error);
+      const avisosRef = collection(db, 'avisos');
+      const q = query(avisosRef, orderBy('dataCriacao', 'desc'), limit(1));
+
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const doc = snapshot.docs[0];
+          setAvisoDestaque({ id: doc.id, ...doc.data() } as Aviso);
+        } else {
+          setAvisoDestaque(null);
+        }
+      }, (error) => {
+        console.error('Erro ao buscar avisos:', error);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // ─── Firestore: Todos os Avisos do Mural ──────────────────────────────────
   useEffect(() => {
-    const avisosRef = collection(db, 'avisos');
-    const q = query(avisosRef, orderBy('dataCriacao', 'desc'));
+    let unsubscribe: any = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        if (unsubscribe) unsubscribe();
+        return;
+      }
+      const avisosRef = collection(db, 'avisos');
+      const q = query(avisosRef, orderBy('dataCriacao', 'desc'));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Aviso));
-      setAvisosMural(docs);
-    }, (error) => {
-      console.error('Erro ao buscar avisos do mural:', error);
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Aviso));
+        setAvisosMural(docs);
+      }, (error) => {
+        console.error('Erro ao buscar avisos do mural:', error);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // ─── Firestore: Próximo Evento (futuro mais próximo) ──────────────────────
   useEffect(() => {
-    const eventosRef = collection(db, 'eventos');
-    // Busca todos os eventos ordenados por dataHora ascendente
-    // e filtra no client-side pois dataHora pode ser string ISO
-    const q = query(eventosRef, orderBy('dataHora', 'asc'));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const agora = new Date();
-      let eventoFuturo: Evento | null = null;
-
-      for (const doc of snapshot.docs) {
-        const data = doc.data();
-        const evento = { id: doc.id, ...data } as Evento;
-        const dataEvento = toDate(evento.dataHora);
-
-        if (dataEvento >= agora) {
-          eventoFuturo = evento;
-          break; // Pega o primeiro evento futuro (mais próximo)
-        }
+    let unsubscribe: any = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        if (unsubscribe) unsubscribe();
+        return;
       }
+      const eventosRef = collection(db, 'eventos');
+      // Busca todos os eventos ordenados por dataHora ascendente
+      // e filtra no client-side pois dataHora pode ser string ISO
+      const q = query(eventosRef, orderBy('dataHora', 'asc'));
 
-      setProximoEvento(eventoFuturo);
-      setIsLoading(false);
-    }, (error) => {
-      console.error('Erro ao buscar eventos:', error);
-      setIsLoading(false);
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const agora = new Date();
+        let eventoFuturo: Evento | null = null;
+
+        for (const doc of snapshot.docs) {
+          const data = doc.data();
+          const evento = { id: doc.id, ...data } as Evento;
+          const dataEvento = toDate(evento.dataHora);
+
+          if (dataEvento >= agora) {
+            eventoFuturo = evento;
+            break; // Pega o primeiro evento futuro (mais próximo)
+          }
+        }
+
+        setProximoEvento(eventoFuturo);
+        setIsLoading(false);
+      }, (error) => {
+        console.error('Erro ao buscar eventos:', error);
+        setIsLoading(false);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // ─── Renderização de Ícones ───────────────────────────────────────────────
@@ -329,6 +365,7 @@ export default function HomeScreen() {
       case 'Feather': return <Feather name={name} size={size} color={color} />;
       case 'Ionicons': return <Ionicons name={name} size={size} color={color} />;
       case 'MaterialCommunityIcons': return <MaterialCommunityIcons name={name} size={size} color={color} />;
+      case 'Lucide': return name === 'IdCard' ? <IdCard size={size} color={color} /> : null;
       default: return <Feather name={name} size={size} color={color} />;
     }
   };
@@ -388,7 +425,7 @@ export default function HomeScreen() {
           {/* Meditação do dia */}
           <View style={styles.meditacaoContainer}>
             <Text style={styles.meditacaoLabel}>
-              {getSaudacao()}, {mockUserName}! Uma palavra para hoje:
+              {getSaudacao()}, {primeiroNome}! Uma palavra para hoje:
             </Text>
             <View style={styles.meditacaoCard}>
               <Text style={styles.meditacaoText}>
@@ -470,16 +507,16 @@ export default function HomeScreen() {
             <Feather name="users" size={22} color="#000000" />
             <Text style={[styles.tabText, { color: '#000000' }]}>Cultos</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/devocional')}>
-            <Feather name="book-open" size={22} color="#666666" />
-            <Text style={[styles.tabText, { color: '#666666' }]}>Devocional</Text>
+          <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/carteirinha')}>
+            <IdCard size={22} color="#666666" />
+            <Text style={[styles.tabText, { color: '#666666' }]}>Carteirinha</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.tabBarRight}>
           <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/avisos')}>
             <Feather name="bell" size={22} color="#666666" />
-            <Text style={[styles.tabText, { color: '#666666' }]}>Notificações</Text>
+            <Text style={[styles.tabText, { color: '#666666' }]}>Avisos</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.tabItem} onPress={() => toggleProfileMenu(true)}>
             <Feather name="user" size={22} color="#666666" />

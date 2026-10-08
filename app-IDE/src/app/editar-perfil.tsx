@@ -16,8 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { updateProfile } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { garantirMapeamentoUsername, normalizarUsername } from '../services/usernameService';
 
 // ─── Componente: Input Customizado ────────────────────────────────────────────
 
@@ -129,7 +131,8 @@ export default function EditarPerfilScreen() {
     const currentUser = auth.currentUser;
     if (!currentUser) return;
 
-    if (!username.trim()) {
+    const novoNome = username.trim();
+    if (!novoNome) {
       Alert.alert('Atenção', 'O nome não pode ficar vazio.');
       return;
     }
@@ -138,11 +141,41 @@ export default function EditarPerfilScreen() {
 
     try {
       const userRef = doc(db, 'users', currentUser.uid);
+
+      // O identificador de login é fixo: definido uma única vez (a partir do username
+      // legado) e nunca alterado ao editar o nome — mesma regra do Web Admin.
+      const snap = await getDoc(userRef);
+      const dadosAtuais: Record<string, any> = snap.data() ?? {};
+      const usernameLogin = dadosAtuais.usernameLogin
+        ? String(dadosAtuais.usernameLogin)
+        : dadosAtuais.username
+          ? normalizarUsername(String(dadosAtuais.username))
+          : '';
+      const preservarLogin = !dadosAtuais.usernameLogin && usernameLogin ? { usernameLogin } : {};
+
+      // Passo 1 (Auth): displayName no motor de autenticação
+      await updateProfile(currentUser, { displayName: novoNome });
+
+      // Passo 2 (Firestore): documento central (lido pelo Web Admin e pelo App)
       await updateDoc(userRef, {
-        username: username.trim(),
+        nome: novoNome,      // lido pelo Web Admin
+        username: novoNome,  // compatibilidade legada (lido pelo App)
         telefone: telefone.trim(),
         dataNascimento: dataNascimento.trim(),
+        ...preservarLogin,
       });
+
+      // Passo 3 (Lookup de login): garante usernames/{usernameLogin}. Não bloqueia o salvamento.
+      if (usernameLogin) {
+        try {
+          const resultado = await garantirMapeamentoUsername(usernameLogin, currentUser.uid, currentUser.email);
+          if (resultado === 'conflito') {
+            console.warn(`[EditarPerfil] O username "${usernameLogin}" já está associado a outra conta.`);
+          }
+        } catch (err) {
+          console.warn('[EditarPerfil] Não foi possível registar o username de login:', err);
+        }
+      }
 
       Alert.alert('Sucesso!', 'Perfil atualizado com sucesso!', [
         { text: 'OK', onPress: () => router.back() }

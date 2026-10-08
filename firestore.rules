@@ -16,7 +16,8 @@ service cloud.firestore {
     // Faz a leitura do documento do próprio utilizador na coleção 'users'.
     function isAdmin() {
       return isAuth() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin';
     }
 
     // ----------------------------------------------------------------------
@@ -24,15 +25,48 @@ service cloud.firestore {
     // ----------------------------------------------------------------------
 
     // Coleção: users (Utilizadores)
+    // Continua PRIVADA: as regras do Firestore não filtram campos, portanto qualquer leitura
+    // devolveria o documento inteiro (e-mail, telefone, role...). O login por username
+    // usa a coleção 'usernames' abaixo.
     match /users/{userId} {
-      // O utilizador pode ler/atualizar os seus próprios dados. Admins podem ler/atualizar todos.
-      allow read, update: if isAuth() && (request.auth.uid == userId || isAdmin());
+      // O utilizador pode ler os seus próprios dados. Admins podem ler todos.
+      allow read: if isAuth() && request.auth.uid == userId;
+      allow read: if isAdmin();
       
-      // Qualquer utilizador autenticado pode criar o seu documento inicial no registo, e admins podem criar novos utilizadores
-      allow create: if isAuth() && (request.auth.uid == userId || isAdmin());
+      // Criação:
+      allow create: if isAuth() && request.auth.uid == userId && request.resource.data.role == 'membro';
+      allow create: if isAdmin();
       
-      // Apenas admins podem apagar utilizadores
+      // Atualização:
+      allow update: if isAuth() && request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+      allow update: if isAdmin();
+      
+      // Apenas admins podem apagar utilizadores.
       allow delete: if isAdmin();
+    }
+
+    // Coleção: usernames (lookup público para login por username)
+    // Documento: usernames/{usernameLogin} → { uid, email }
+    match /usernames/{handle} {
+      // Leitura pontual pública (é preciso conhecer o handle exato) — necessária antes do login.
+      allow get: if true;
+      // Listagem proibida: impede enumerar utilizadores/e-mails.
+      allow list: if false;
+
+      // O próprio utilizador reserva o seu handle, apenas com { uid, email } que correspondam ao token.
+      // Como 'update' é negado a não-admins, um handle já reservado não pode ser sequestrado.
+      allow create: if isAuth()
+        && request.resource.data.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.uid is string
+        && request.resource.data.email is string
+        && (
+          (request.resource.data.uid == request.auth.uid
+            && request.resource.data.email == request.auth.token.email)
+          || isAdmin()
+        );
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isAuth() && resource.data.uid == request.auth.uid);
     }
 
     // Coleção: avisos
@@ -107,6 +141,12 @@ service cloud.firestore {
       
       // Apenas administradores podem apagar pedidos.
       allow delete: if isAdmin();
+    }
+
+    // Coleção: devocionais
+    match /devocionais/{document=**} {
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isAuth() && resource.data.userId == request.auth.uid;
     }
 
     // Coleção: logs_auditoria

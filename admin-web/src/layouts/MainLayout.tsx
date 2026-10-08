@@ -62,10 +62,11 @@ export default function MainLayout() {
     const allowedRoles = MENU_PERMISSIONS[item.label];
     // Se não há mapa para o item, oculta por segurança
     if (!allowedRoles) return false;
-    // Se o role não está carregado, não renderiza menus sensíveis
     if (!userRole) return false;
     return allowedRoles.includes(userRole);
   });
+
+  const primeiroNome = user?.nome ? user.nome.split(' ')[0] : ((user as any)?.displayName ? (user as any).displayName.split(' ')[0] : 'Utilizador');
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 relative">
@@ -89,7 +90,7 @@ export default function MainLayout() {
             <h2 className="text-xl font-bold tracking-tight">MINISTÉRIO IDE</h2>
             <div className="mt-1 flex flex-col gap-1.5">
               <span className="text-sm font-medium text-blue-100 truncate max-w-[180px]" title={user?.nome || user?.email || ''}>
-                {user?.nome || user?.email?.split('@')[0] || 'Administrador'}
+                {primeiroNome}
               </span>
               <span className="text-[10px] font-bold bg-blue-800/60 text-blue-300 py-0.5 px-2 rounded w-max uppercase tracking-wider">
                 {(user?.role && ROLE_LABELS[user.role]) || user?.role || 'Admin'}
@@ -148,16 +149,16 @@ export default function MainLayout() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden w-full bg-gray-100">
         {/* Topbar visível apenas no Mobile */}
-        <div className="md:hidden bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm">
-          <div className="flex flex-col">
-            <h2 className="text-sm font-bold text-blue-900 tracking-tight">MINISTÉRIO IDE</h2>
-          </div>
+        <div className="md:hidden bg-white px-6 py-4 flex items-center gap-4 border-b border-gray-100 shadow-sm">
           <button 
             onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 -mr-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 -ml-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Menu size={24} />
           </button>
+          <div className="flex flex-col">
+            <h2 className="text-sm font-bold text-blue-900 tracking-tight">MINISTÉRIO IDE</h2>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10">

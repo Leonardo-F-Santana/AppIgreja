@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -31,12 +31,15 @@ interface AuthContextType {
   user: AppUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  // Atualiza o nome no estado local (ex.: após editar o perfil), refletindo de imediato no cabeçalho
+  atualizarNome: (nome: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signOut: async () => {},
+  atualizarNome: () => {},
 });
 
 // Hook para consumir o contexto
@@ -89,10 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Sincronizar nome e e-mail do Firebase Auth no Firestore
         // (merge: true preserva o campo role existente)
+        // O nome só é sincronizado se o Auth tiver um displayName, para não apagar
+        // um nome já salvo no Firestore com uma string vazia.
         try {
           await setDoc(doc(db, 'users', firebaseUser.uid), {
             email: firebaseUser.email || '',
-            nome: firebaseUser.displayName || '',
+            ...(firebaseUser.displayName ? { nome: firebaseUser.displayName } : {}),
           }, { merge: true });
         } catch (error) {
           console.error('Erro ao sincronizar dados do utilizador:', error);
@@ -122,8 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const atualizarNome = useCallback((nome: string) => {
+    setUser((prev) => (prev ? { ...prev, nome } : prev));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signOut: handleSignOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut: handleSignOut, atualizarNome }}>
       {children}
     </AuthContext.Provider>
   );
