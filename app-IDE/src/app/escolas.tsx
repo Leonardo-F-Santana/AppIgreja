@@ -98,42 +98,35 @@ export default function EscolasScreen() {
           return;
         }
 
-        // Busca em todas as subcoleções "alunos" onde o membroId é o usuário atual
-        const alunosQuery = query(
-          collectionGroup(db, 'alunos'),
-          where('membroId', '==', user.uid)
-        );
-
-        const alunosSnapshot = await getDocs(alunosQuery);
+        // Busca todas as turmas e verifica se o usuário é aluno de cada uma. Evita o erro de collectionGroup index ausente.
+        const turmasRef = collection(db, 'turmas');
+        const turmasSnapshot = await getDocs(turmasRef);
         
-        if (alunosSnapshot.empty) {
+        if (turmasSnapshot.empty) {
           setTurmas([]);
           setIsLoading(false);
           return;
         }
 
         const turmasEncontradas: Turma[] = [];
-        const turmasIds = new Set<string>();
         const alunoIds: Record<string, string> = {};
 
-        for (const alunoDoc of alunosSnapshot.docs) {
-          const turmaRef = alunoDoc.ref.parent.parent;
+        for (const turmaDoc of turmasSnapshot.docs) {
+          const turmaId = turmaDoc.id;
+          const alunosRef = collection(db, 'turmas', turmaId, 'alunos');
+          const q = query(alunosRef, where('membroId', '==', user.uid));
+          const snap = await getDocs(q);
           
-          if (turmaRef && !turmasIds.has(turmaRef.id)) {
-            turmasIds.add(turmaRef.id);
-            alunoIds[turmaRef.id] = alunoDoc.id;
-            const turmaDoc = await getDoc(turmaRef);
-            
-            if (turmaDoc.exists()) {
-              const data = turmaDoc.data();
-              turmasEncontradas.push({
-                id: turmaDoc.id,
-                nome: data.nome || 'Turma sem nome',
-                professor: data.professor || 'Não informado',
-                diaHorario: data.diaHorario || 'Não definido',
-                status: data.status || 'ativa',
-              });
-            }
+          if (!snap.empty) {
+            const data = turmaDoc.data();
+            turmasEncontradas.push({
+              id: turmaId,
+              nome: data.nome || 'Turma sem nome',
+              professor: data.professor || 'Não informado',
+              diaHorario: data.diaHorario || 'Não definido',
+              status: data.status || 'ativa',
+            });
+            alunoIds[turmaId] = snap.docs[0].id; // ID do documento do aluno na turma
           }
         }
 

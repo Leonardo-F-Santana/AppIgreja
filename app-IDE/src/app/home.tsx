@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -19,7 +19,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { IdCard } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import {
   collection,
@@ -126,6 +126,24 @@ const mockEvents = [
 ];
 
 
+const VERSICULOS = [
+  { texto: "Não to mandei eu? Esforça-te, e tem bom ânimo; não temas, nem te espantes; porque o Senhor teu Deus é contigo, por onde quer que andares.", referencia: "Josué 1:9" },
+  { texto: "Posso todas as coisas em Cristo que me fortalece.", referencia: "Filipenses 4:13" },
+  { texto: "O Senhor é o meu pastor, nada me faltará.", referencia: "Salmos 23:1" },
+  { texto: "Porque sou eu que conheço os planos que tenho para vocês, diz o Senhor, planos de fazê-los prosperar e não de causar dano, planos de dar esperança e um futuro.", referencia: "Jeremias 29:11" },
+  { texto: "Por isso não tema, pois estou com você; não tenha medo, pois sou o seu Deus. Eu o fortalecerei e o ajudarei.", referencia: "Isaías 41:10" },
+  { texto: "E sabemos que todas as coisas contribuem juntamente para o bem daqueles que amam a Deus.", referencia: "Romanos 8:28" },
+  { texto: "Confia no Senhor de todo o teu coração, e não te estribes no teu próprio entendimento.", referencia: "Provérbios 3:5" },
+  { texto: "Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.", referencia: "Salmos 46:1" },
+  { texto: "Venham a mim, todos os que estão cansados e sobrecarregados, e eu lhes darei descanso.", referencia: "Mateus 11:28" },
+  { texto: "Neste mundo vocês terão aflições; contudo, tenham ânimo! Eu venci o mundo.", referencia: "João 16:33" },
+  { texto: "Ora, a fé é a certeza daquilo que esperamos e a prova das coisas que não vemos.", referencia: "Hebreus 11:1" },
+  { texto: "Lancem sobre ele toda a sua ansiedade, porque ele tem cuidado de vocês.", referencia: "1 Pedro 5:7" },
+  { texto: "As misericórdias do Senhor são a causa de não sermos consumidos, porque as suas misericórdias não têm fim; renovam-se cada manhã.", referencia: "Lamentações 3:22-23" },
+  { texto: "Portanto, se alguém está em Cristo, é nova criação. As coisas antigas já passaram; eis que surgiram coisas novas!", referencia: "2 Coríntios 5:17" },
+  { texto: "Lâmpada para os meus pés é tua palavra, e luz para o meu caminho.", referencia: "Salmos 119:105" }
+];
+
 const getSaudacao = () => {
   const hora = new Date().getHours();
   if (hora >= 0 && hora <= 11) return 'Bom dia';
@@ -143,6 +161,14 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState('Membro');
   const [userEmail, setUserEmail] = useState('');
   const [avisosExpandidos, setAvisosExpandidos] = useState<Record<string, boolean>>({});
+
+  const [versiculo, setVersiculo] = useState(VERSICULOS[0]);
+  
+  useFocusEffect(
+    useCallback(() => {
+      setVersiculo(VERSICULOS[Math.floor(Math.random() * VERSICULOS.length)]);
+    }, [])
+  );
 
   const toggleAviso = (id: string) => {
     setAvisosExpandidos(prev => ({ ...prev, [id]: !prev[id] }));
@@ -429,9 +455,9 @@ export default function HomeScreen() {
             </Text>
             <View style={styles.meditacaoCard}>
               <Text style={styles.meditacaoText}>
-                "E nós conhecemos e cremos no amor que Deus tem por nós. Deus é amor, e quem permanece no amor permanece em Deus, e Deus nele."
+                "{versiculo.texto}"
               </Text>
-              <Text style={styles.meditacaoReference}>1 Jo 4:16</Text>
+              <Text style={styles.meditacaoReference}>{versiculo.referencia}</Text>
             </View>
           </View>
 
