@@ -1,0 +1,11 @@
+# EAS Build ignore file
+node_modules/
+.expo/
+dist/
+web-build/
+android/.gradle/
+android/app/build/
+android/build/
+.gradle/
+build/
+*.log

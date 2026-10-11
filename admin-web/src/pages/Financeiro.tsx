@@ -7,6 +7,9 @@ import {
 import { collection, query, orderBy, onSnapshot, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { exportToCSV } from '../utils/exportCSV';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import logoIgreja from '../assets/logo-black.png';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -182,6 +185,154 @@ export default function Financeiro() {
     }
   }, [tipo, categoria, currentCategorias]);
 
+  // ─── Geração de Relatório em PDF ───────────────────────────────────────────
+  const gerarRelatorioPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Cabeçalho com Logotipo
+    try {
+      doc.addImage(logoIgreja, 'PNG', 14, 10, 32, 19);
+    } catch (e) {
+      console.warn('Erro ao carregar logotipo no PDF:', e);
+    }
+
+    // Título Centralizado
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Relatório de Prestação de Contas', pageWidth / 2, 20, { align: 'center' });
+
+    // Data de Geração
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    const dataGeracao = new Date().toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    doc.text(`Gerado em: ${dataGeracao}`, pageWidth / 2, 26, { align: 'center' });
+
+    // Linha divisória
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(14, 33, pageWidth - 14, 33);
+
+    // Bloco de Resumo Financeiro
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, 37, pageWidth - 28, 22, 2, 2, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(14, 37, pageWidth - 28, 22, 2, 2, 'S');
+
+    // Totais: Entradas
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('TOTAL ENTRADAS', 22, 44);
+    doc.setFontSize(11);
+    doc.setTextColor(22, 163, 74);
+    doc.text(formatarMoeda(totalEntradas).replace(/\u00a0/g, ' '), 22, 52);
+
+    // Totais: Saídas
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('TOTAL SAÍDAS', 86, 44);
+    doc.setFontSize(11);
+    doc.setTextColor(220, 38, 38);
+    doc.text(formatarMoeda(totalSaidas).replace(/\u00a0/g, ' '), 86, 52);
+
+    // Totais: Saldo Atual
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('SALDO ATUAL', 150, 44);
+    doc.setFontSize(11);
+    if (saldoAtual >= 0) {
+      doc.setTextColor(37, 99, 235);
+    } else {
+      doc.setTextColor(220, 38, 38);
+    }
+    doc.text(formatarMoeda(saldoAtual).replace(/\u00a0/g, ' '), 150, 52);
+
+    // Tabela Detalhada de Movimentações
+    const rows = transacoesFiltradas.map((t) => [
+      formatarData(t.data),
+      t.descricao + (t.categoria ? ` (${t.categoria})` : ''),
+      t.tipo === 'entrada' ? 'Entrada' : 'Saída',
+      (t.tipo === 'entrada' ? '+ ' : '- ') + formatarMoeda(t.valor).replace(/\u00a0/g, ' '),
+    ]);
+
+    autoTable(doc, {
+      startY: 64,
+      head: [['Data', 'Descrição', 'Tipo', 'Valor']],
+      body: rows,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [37, 99, 235],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      bodyStyles: {
+        fontSize: 8.5,
+        textColor: [51, 65, 85],
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+      columnStyles: {
+        0: { cellWidth: 26, halign: 'center' },
+        1: { cellWidth: 'auto', halign: 'left' },
+        2: { cellWidth: 24, halign: 'center' },
+        3: { cellWidth: 34, halign: 'right', fontStyle: 'bold' },
+      },
+      margin: { left: 14, right: 14, bottom: 40 },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 3) {
+          const rowData = rows[data.row.index];
+          if (rowData && rowData[2] === 'Entrada') {
+            data.cell.styles.textColor = [22, 163, 74];
+          } else if (rowData && rowData[2] === 'Saída') {
+            data.cell.styles.textColor = [220, 38, 38];
+          }
+        }
+      },
+    });
+
+    // Assinaturas
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const lastY = (doc as any).lastAutoTable?.finalY ?? 70;
+
+    let signY: number;
+    if (lastY + 35 > pageHeight - 20) {
+      doc.addPage();
+      signY = 50;
+    } else {
+      signY = Math.max(lastY + 25, pageHeight - 35);
+    }
+
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.5);
+
+    // Linha Pastor Presidente
+    doc.line(24, signY, 89, signY);
+    // Linha Tesoureiro(a)
+    doc.line(121, signY, 186, signY);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Pastor Presidente', 56.5, signY + 5, { align: 'center' });
+    doc.text('Tesoureiro(a)', 153.5, signY + 5, { align: 'center' });
+
+    // Salvar arquivo PDF
+    doc.save('prestacao_contas_ide.pdf');
+  };
+
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-10">
       {/* Header */}
@@ -284,6 +435,14 @@ export default function Financeiro() {
             >
               <Download size={18} />
               Exportar CSV
+            </button>
+
+            <button
+              onClick={gerarRelatorioPDF}
+              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors shadow-sm whitespace-nowrap justify-center"
+            >
+              <FileText size={18} />
+              Relatório
             </button>
 
             <button
