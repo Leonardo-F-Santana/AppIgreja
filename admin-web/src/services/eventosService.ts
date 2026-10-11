@@ -81,7 +81,7 @@ export async function deletarEvento(id: string): Promise<void> {
 export function ouvirEventos(
   callback: (eventos: Evento[]) => void
 ): () => void {
-  const q = query(eventosRef, orderBy("dataHora", "asc"));
+  const q = query(eventosRef, orderBy("dataHora", "desc"));
 
   const unsubscribe = onSnapshot(
     q,
