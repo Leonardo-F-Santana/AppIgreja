@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { getDocs, collection } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { enviarNotificacaoPushEmMassa } from '../utils/pushNotifications';
 import {
   ouvirEventos,
   criarEvento,
