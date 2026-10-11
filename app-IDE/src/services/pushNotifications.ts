@@ -3,11 +3,14 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
 let Notifications: any = null;
-try {
-  // O expo-notifications dá crash imediato ao ser importado no Expo Go (Android SDK 53+)
-  Notifications = require('expo-notifications');
-} catch (e) {
-  console.log('[pushNotifications] expo-notifications não suportado neste ambiente (Expo Go).');
+if (Constants.appOwnership !== 'expo') {
+  try {
+    Notifications = require('expo-notifications');
+  } catch (e) {
+    console.log('[pushNotifications] Falha ao importar expo-notifications.');
+  }
+} else {
+  console.log('[pushNotifications] expo-notifications ignorado no Expo Go.');
 }
 
 // ─── Configuração do handler de notificações (foreground) ──────────────────

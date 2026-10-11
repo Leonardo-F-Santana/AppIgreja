@@ -121,8 +121,44 @@ export default function TabLayout() {
           setAnimationComplete(true);
         });
       });
+
+      // ─── Lógica de redirecionamento de Push Notifications (Deep Linking) ───
+      let NotificationsModule: any = null;
+      const Constants = require('expo-constants').default || require('expo-constants');
+      if (Constants.appOwnership !== 'expo') {
+        try {
+          NotificationsModule = require('expo-notifications');
+        } catch (e) {
+          // Ignora
+        }
+      }
+
+      if (NotificationsModule) {
+        const handleNotificationTap = (response: any) => {
+          const data = response?.notification?.request?.content?.data;
+          if (data?.tipo === 'aviso') {
+            router.push('/avisos');
+          } else if (data?.tipo === 'evento_lembrete') {
+            router.push('/eventos');
+          }
+        };
+
+        // 1. Verifica se a aplicação foi aberta a partir de uma notificação fechada (Cold Boot)
+        NotificationsModule.getLastNotificationResponseAsync().then((response: any) => {
+          if (response) {
+            handleNotificationTap(response);
+          }
+        });
+
+        // 2. Ouve toques em notificações enquanto a app está em background ou foreground
+        const sub = NotificationsModule.addNotificationResponseReceivedListener((response: any) => {
+          handleNotificationTap(response);
+        });
+
+        return () => sub.remove();
+      }
     }
-  }, [appIsReady, opacity, scale]);
+  }, [appIsReady, opacity, scale, router]);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0F0F19' }}>

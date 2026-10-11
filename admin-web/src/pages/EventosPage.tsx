@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
   Calendar, Plus, Trash2, Pencil, X, Search,
-  MapPin, Clock, AlertTriangle,
+  MapPin, Clock, AlertTriangle, Bell
 } from 'lucide-react';
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { enviarNotificacaoPushEmMassa } from '../utils/pushNotifications';
 import {
   ouvirEventos,
   criarEvento,
@@ -295,6 +298,84 @@ interface EventoCardProps {
 
 function EventoCard({ evento, onEditar, onEliminar }: EventoCardProps) {
   const passou = eventoPassou(evento.dataHora);
+  const [isSendingPush, setIsSendingPush] = useState(false);
+
+  const handleEnviarLembrete = async () => {
+    setIsSendingPush(true);
+    try {
+      // 1. Busca os utilizadores para obter os tokens
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const tokenSet = new Set<string>();
+
+      usersSnapshot.forEach((docSnap) => {
+        const userData = docSnap.data();
+        if (
+          userData.expoPushToken &&
+          typeof userData.expoPushToken === 'string' &&
+          userData.receberNotificacoes !== false
+        ) {
+          tokenSet.add(userData.expoPushToken);
+        }
+      });
+
+      const tokens = Array.from(tokenSet);
+
+      if (tokens.length > 0) {
+        // 2. Prepara a mensagem
+        const titulo = `Lembrete: ${evento.titulo}`;
+        const corpo = evento.descricao || evento.dataHora || 'Não se esqueça do evento que está a aproximar-se!';
+        const mensagemResumida = corpo.length > 100 ? corpo.substring(0, 97) + '...' : corpo;
+        
+        // 3. Envia diretamente para a API do Expo para depurar possíveis erros
+        const messages = tokens.map((token) => ({
+          to: token,
+          sound: 'default',
+          title: titulo,
+          body: mensagemResumida,
+          channelId: 'default',
+          priority: 'high',
+          data: { tipo: 'evento_lembrete', timestamp: Date.now() },
+        }));
+
+        const response = await fetch('/api/push', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(messages),
+        });
+
+        const data = await response.json();
+        
+        // Verifica se o Expo aceitou ou rejeitou os tickets
+        let temErro = false;
+        let msgErro = '';
+        if (data && data.data) {
+          data.data.forEach((ticket: any) => {
+            if (ticket.status === 'error') {
+              temErro = true;
+              msgErro = ticket.message || 'Erro desconhecido';
+            }
+          });
+        }
+
+        if (temErro) {
+          alert(`O Expo rejeitou o envio. Motivo: ${msgErro}`);
+        } else {
+          alert(`Lembrete enviado (e aceite pelo Expo) com sucesso para ${tokens.length} dispositivo(s)!`);
+        }
+      } else {
+        alert('Nenhuma notificação foi enviada (nenhum token válido encontrado).');
+      }
+    } catch (error) {
+      console.error('[EventoCard] Erro ao enviar push:', error);
+      alert('Falha ao enviar o lembrete. Verifique o console para mais detalhes.');
+    } finally {
+      setIsSendingPush(false);
+    }
+  };
 
   return (
     <div
@@ -361,6 +442,26 @@ function EventoCard({ evento, onEditar, onEliminar }: EventoCardProps) {
             {evento.local || '—'}
           </span>
         </div>
+
+        {/* Botão de Lembrete Push (UX Mobile Friendly) */}
+        {!passou && (
+          <button
+            onClick={handleEnviarLembrete}
+            disabled={isSendingPush}
+            className={`mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all group/btn
+              ${isSendingPush
+                ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100'
+                : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-600 hover:to-indigo-600 hover:text-white border border-blue-100 hover:border-transparent shadow-sm hover:shadow-md'
+              }`}
+          >
+            {isSendingPush ? (
+              <Spinner />
+            ) : (
+              <Bell size={16} className="transition-transform group-hover/btn:scale-110 group-hover/btn:rotate-12" />
+            )}
+            {isSendingPush ? 'A enviar...' : 'Notificar Membros'}
+          </button>
+        )}
       </div>
     </div>
   );

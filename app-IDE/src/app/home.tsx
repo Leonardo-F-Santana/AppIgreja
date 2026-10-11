@@ -123,6 +123,8 @@ const mockEvents = [
   { id: '1', title: 'Oração das Mães', image: require('../../assets/Img/P1.jpg') },
   { id: '2', title: 'Encontro de adolescentes!', image: require('../../assets/Img/P2.jpg') },
   { id: '3', title: 'Café conexão', image: require('../../assets/Img/P3.jpg') },
+  { id: '4', title: 'Escola de Batismo', image: require('../../assets/Img/P4.jpg') },
+  { id: '5', title: 'Setembro Amarelo', image: require('../../assets/Img/P5.jpg') },
 ];
 
 
@@ -163,7 +165,7 @@ export default function HomeScreen() {
   const [avisosExpandidos, setAvisosExpandidos] = useState<Record<string, boolean>>({});
 
   const [versiculo, setVersiculo] = useState(VERSICULOS[0]);
-  
+
   useFocusEffect(
     useCallback(() => {
       setVersiculo(VERSICULOS[Math.floor(Math.random() * VERSICULOS.length)]);
