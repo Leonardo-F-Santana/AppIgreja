@@ -21,6 +21,7 @@ import VisitantePublicoPage from './pages/VisitantePublicoPage';
 import MidiasPage from './pages/MidiasPage';
 import LogsAuditoriaPage from './pages/LogsAuditoriaPage';
 import CadastroPage from './pages/CadastroPage';
+import ReunioesPage from './pages/ReunioesPage';
 
 // Cargos bloqueados nas rotas que a Recepção não deve acessar
 const SEM_RECEPCAO = ['recepcao'];
@@ -59,6 +60,7 @@ function App() {
                 <TurmaDetalhesPage />
               </ProtectedRoute>
             } />
+            <Route path="reunioes" element={<ReunioesPage />} />
             <Route path="cultos" element={<CultosPage />} />
             <Route path="midias" element={<ProtectedRoute deniedRoles={SEM_RECEPCAO}><MidiasPage /></ProtectedRoute>} />
             <Route path="financeiro" element={

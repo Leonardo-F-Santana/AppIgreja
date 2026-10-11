@@ -120,6 +120,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Coleção: reunioes
+    match /reunioes/{document=**} {
+      allow read, write: if isAuth();
+    }
+
     // Coleção: configuracoes (meta de células, etc.)
     match /configuracoes/{document=**} {
       allow read: if isAuth();
