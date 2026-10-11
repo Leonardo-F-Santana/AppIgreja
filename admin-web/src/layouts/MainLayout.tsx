@@ -19,7 +19,7 @@ const MENU_PERMISSIONS: Record<string, UserRole[]> = {
   'Visitantes':       ['admin', 'secretaria', 'recepcao'],
   'Células':          ['admin', 'secretaria', 'recepcao'],
   'Escolas':          ['admin', 'secretaria', 'recepcao'],
-  'Reuniões':         ['admin', 'secretaria', 'recepcao'],
+  'Reuniões':         ['admin', 'secretaria'],
   'Avisos':           ['admin', 'secretaria', 'recepcao', 'midia'],
   'Mídias':           ['admin', 'midia'],
   'Financeiro':       ['admin', 'tesouraria'],

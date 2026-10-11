@@ -60,7 +60,11 @@ function App() {
                 <TurmaDetalhesPage />
               </ProtectedRoute>
             } />
-            <Route path="reunioes" element={<ReunioesPage />} />
+            <Route path="reunioes" element={
+              <ProtectedRoute allowedRoles={['admin', 'secretaria']}>
+                <ReunioesPage />
+              </ProtectedRoute>
+            } />
             <Route path="cultos" element={<CultosPage />} />
             <Route path="midias" element={<ProtectedRoute deniedRoles={SEM_RECEPCAO}><MidiasPage /></ProtectedRoute>} />
             <Route path="financeiro" element={
