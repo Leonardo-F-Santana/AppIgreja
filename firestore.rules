@@ -29,8 +29,8 @@ service cloud.firestore {
     // devolveria o documento inteiro (e-mail, telefone, role...). O login por username
     // usa a coleção 'usernames' abaixo.
     match /users/{userId} {
-      // O utilizador pode ler os seus próprios dados. Admins podem ler todos.
-      allow read: if isAuth() && request.auth.uid == userId;
+      // O utilizador pode ler os seus próprios dados ou se o e-mail coincidir. Admins podem ler todos.
+      allow read: if isAuth() && (request.auth.uid == userId || resource.data.email == request.auth.token.email);
       allow read: if isAdmin();
       
       // Criação:
@@ -38,7 +38,7 @@ service cloud.firestore {
       allow create: if isAdmin();
       
       // Atualização:
-      allow update: if isAuth() && request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+      allow update: if isAuth() && (request.auth.uid == userId || resource.data.email == request.auth.token.email) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
       allow update: if isAdmin();
       
       // Apenas admins podem apagar utilizadores.

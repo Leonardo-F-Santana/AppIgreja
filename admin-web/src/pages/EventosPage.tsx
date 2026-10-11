@@ -411,21 +411,21 @@ function EventoCard({ evento, onEditar, onEliminar }: EventoCardProps) {
             )}
           </div>
 
-          {/* Botões de ação — visíveis ao hover */}
-          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Botões de ação */}
+          <div className="flex items-center gap-2 sm:flex-shrink-0">
             <button
               onClick={onEditar}
-              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+              className="p-2.5 text-gray-400 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
               title="Editar evento"
             >
-              <Pencil size={15} />
+              <Pencil size={16} />
             </button>
             <button
               onClick={onEliminar}
-              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+              className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
               title="Eliminar evento"
             >
-              <Trash2 size={15} />
+              <Trash2 size={16} />
             </button>
           </div>
         </div>

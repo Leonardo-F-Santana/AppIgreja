@@ -13,6 +13,7 @@ import {
   Keyboard,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -199,6 +200,7 @@ export default function AuthScreen() {
             usernameLogin: username.trim().toLowerCase(),
             email: finalEmail,
             acessoApp: true,
+            role: 'membro',
             createdAt: new Date(),
           });
           console.log('Nova conta salva no Firestore com sucesso!');
@@ -308,7 +310,12 @@ export default function AuthScreen() {
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.mainContent}>
+          <ScrollView 
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.mainContent}>
             {/* Toggle (Segmented Control) */}
             <View style={styles.toggleContainer}>
               <Animated.View style={[styles.activePill, activePillStyle]} />
@@ -468,6 +475,7 @@ export default function AuthScreen() {
               </Animated.View>
             </View>
           </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </View>
     </TouchableWithoutFeedback>
@@ -546,6 +554,7 @@ const styles = StyleSheet.create({
   formsWrapper: {
     width: '100%',
     flex: 1,
+    minHeight: 450, // Ensures there is enough space for the forms to scroll if needed
   },
   inputContainer: {
     marginBottom: 30,
