@@ -324,7 +324,7 @@ function EventoCard({ evento, onEditar, onEliminar }: EventoCardProps) {
         const titulo = `Lembrete: ${evento.titulo}`;
         const corpo = evento.descricao || evento.dataHora || 'Não se esqueça do evento que está a aproximar-se!';
         const mensagemResumida = corpo.length > 100 ? corpo.substring(0, 97) + '...' : corpo;
-        
+
         // 3. Envia diretamente para a API do Expo para depurar possíveis erros
         const messages = tokens.map((token) => ({
           to: token,
@@ -347,7 +347,7 @@ function EventoCard({ evento, onEditar, onEliminar }: EventoCardProps) {
         });
 
         const data = await response.json();
-        
+
         // Verifica se o Expo aceitou ou rejeitou os tickets
         let temErro = false;
         let msgErro = '';
@@ -363,7 +363,7 @@ function EventoCard({ evento, onEditar, onEliminar }: EventoCardProps) {
         if (temErro) {
           alert(`O Expo rejeitou o envio. Motivo: ${msgErro}`);
         } else {
-          alert(`Lembrete enviado (e aceite pelo Expo) com sucesso para ${tokens.length} dispositivo(s)!`);
+          alert(`Lembrete enviado com sucesso para ${tokens.length} dispositivo(s)!`);
         }
       } else {
         alert('Nenhuma notificação foi enviada (nenhum token válido encontrado).');
