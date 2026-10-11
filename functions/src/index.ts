@@ -12,7 +12,12 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 /**
  * Função auxiliar isolada para envio em massa das notificações.
  */
-async function enviarNotificacaoExpo(titulo: string, mensagem: string, tokens: string[]): Promise<void> {
+async function enviarNotificacaoExpo(
+  titulo: string,
+  mensagem: string,
+  tokens: string[],
+  dataPayload?: Record<string, any>
+): Promise<void> {
   if (!tokens || tokens.length === 0) return;
 
   const messages = tokens.map((token) => ({
@@ -22,7 +27,7 @@ async function enviarNotificacaoExpo(titulo: string, mensagem: string, tokens: s
     body: mensagem,
     channelId: "default",
     priority: "high",
-    data: { tipo: "evento_lembrete", timestamp: Date.now() },
+    data: dataPayload || { tipo: "evento_lembrete", timestamp: Date.now() },
   }));
 
   try {
@@ -118,5 +123,72 @@ export const enviarLembretePush = functions.https.onCall(async (data, context) =
   } catch (error) {
     functions.logger.error("Erro interno ao enviar lembrete:", error);
     throw new functions.https.HttpsError("internal", "Ocorreu um erro interno ao processar o envio do lembrete.");
+  }
+});
+
+/**
+ * Função HTTP Callable para notificar o início de transmissão ao vivo aos membros.
+ * Recebe: { titulo?: string }
+ */
+export const notificarTransmissaoAoVivo = functions.https.onCall(async (data, context) => {
+  // 1. Verificação de segurança: utilizador autenticado
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "O utilizador necessita de estar autenticado para disparar notificações."
+    );
+  }
+
+  const tituloTransmissao = (data?.titulo || "").trim() || "Culto Ao Vivo";
+  const tituloPush = "🔴 Estamos ao vivo!";
+  const corpoPush = `${tituloTransmissao}`;
+
+  try {
+    // 2. Busca todos os utilizadores ativos e extrai os pushTokens únicos (Set)
+    const usersSnapshot = await db.collection("users").get();
+    const tokenSet = new Set<string>();
+
+    usersSnapshot.forEach((docSnap) => {
+      const userData = docSnap.data();
+      if (
+        userData.expoPushToken &&
+        typeof userData.expoPushToken === "string" &&
+        userData.receberNotificacoes !== false
+      ) {
+        tokenSet.add(userData.expoPushToken);
+      }
+    });
+
+    const tokens = Array.from(tokenSet);
+
+    if (tokens.length === 0) {
+      return { 
+        sucesso: false, 
+        enviados: 0, 
+        mensagem: "Nenhum token válido encontrado para envio." 
+      };
+    }
+
+    // 3. Integração: Envio em massa para a API do Expo
+    await enviarNotificacaoExpo(tituloPush, corpoPush, tokens, {
+      tipo: "transmissao_ao_vivo",
+      titulo: tituloTransmissao,
+      timestamp: Date.now(),
+    });
+
+    functions.logger.info(`[notificarTransmissaoAoVivo] Notificação transmitida para ${tokens.length} membros.`);
+
+    // 4. Retorno para o Web Admin
+    return {
+      sucesso: true,
+      enviados: tokens.length,
+      mensagem: `Notificação enviada com sucesso para ${tokens.length} dispositivo(s).`,
+    };
+  } catch (error) {
+    functions.logger.error("Erro interno ao enviar notificação de transmissão:", error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Ocorreu um erro interno ao processar a notificação de transmissão ao vivo."
+    );
   }
 });

@@ -58,6 +58,12 @@ interface Evento {
   criadoEm: Timestamp | null;
 }
 
+interface TransmissaoAoVivo {
+  aoVivo: boolean;
+  linkYoutube: string;
+  titulo: string;
+}
+
 // ─── Helpers de Data ──────────────────────────────────────────────────────────
 
 function toDate(dataHora: string | Timestamp): Date {
@@ -180,6 +186,7 @@ export default function HomeScreen() {
   const [avisoDestaque, setAvisoDestaque] = useState<Aviso | null>(null);
   const [avisosMural, setAvisosMural] = useState<Aviso[]>([]);
   const [proximoEvento, setProximoEvento] = useState<Evento | null>(null);
+  const [transmissaoAtual, setTransmissaoAtual] = useState<TransmissaoAoVivo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // ─── Controle do Drawer ───────────────────────────────────────────────────
@@ -386,6 +393,30 @@ export default function HomeScreen() {
     };
   }, []);
 
+  // ─── Firestore: Transmissão ao Vivo ─────────────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      doc(db, 'configuracoes', 'transmissao'),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setTransmissaoAtual({
+            aoVivo: Boolean(data?.aoVivo),
+            linkYoutube: data?.linkYoutube || '',
+            titulo: data?.titulo || '',
+          });
+        } else {
+          setTransmissaoAtual(null);
+        }
+      },
+      (error) => {
+        console.error('Erro ao escutar transmissão ao vivo:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
   // ─── Renderização de Ícones ───────────────────────────────────────────────
   const renderIcon = (family: string | undefined, name: any, size = 24, color = '#FFFFFF') => {
     switch (family) {
@@ -462,6 +493,31 @@ export default function HomeScreen() {
               <Text style={styles.meditacaoReference}>{versiculo.referencia}</Text>
             </View>
           </View>
+
+          {/* Botão de Transmissão ao Vivo (Pulsante) */}
+          {transmissaoAtual?.aoVivo && (
+            <TouchableOpacity
+              className="bg-red-600 flex-row items-center justify-center py-3.5 px-4 rounded-2xl mx-5 mb-4 animate-pulse shadow-lg shadow-red-500/50"
+              style={styles.botaoTransmissaoAoVivo}
+              activeOpacity={0.85}
+              onPress={() => {
+                if (transmissaoAtual.linkYoutube) {
+                  Linking.openURL(transmissaoAtual.linkYoutube).catch((err) => {
+                    console.error('Erro ao abrir link do YouTube:', err);
+                    Alert.alert('Erro', 'Não foi possível abrir o link da transmissão.');
+                  });
+                } else {
+                  Alert.alert('Aviso', 'O link da transmissão ainda não foi configurado.');
+                }
+              }}
+            >
+              <View style={styles.indicadorAoVivoPonto} className="w-3 h-3 rounded-full bg-white mr-2.5" />
+              <Ionicons name="videocam" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text className="text-white font-bold text-sm tracking-wide uppercase" style={styles.botaoTransmissaoTexto}>
+                {transmissaoAtual.titulo ? `AO VIVO: ${transmissaoAtual.titulo}` : 'ASSISTIR AO VIVO'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Grid de Navegação */}
           <View style={styles.gridContainer}>
@@ -657,6 +713,35 @@ const styles = StyleSheet.create({
     color: '#AAAAAA',
     fontSize: 13,
     textAlign: 'right',
+  },
+  botaoTransmissaoAoVivo: {
+    backgroundColor: '#dc2626',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: '#dc2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  indicadorAoVivoPonto: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
+    marginRight: 8,
+  },
+  botaoTransmissaoTexto: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   gridContainer: {
     flexDirection: 'row',

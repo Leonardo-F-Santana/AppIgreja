@@ -12,6 +12,7 @@ import {
   deletarAlbum,
   type Album,
 } from '../services/albunsService';
+import GestaoTransmissaoCard from '../components/GestaoTransmissaoCard';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -678,6 +679,9 @@ export default function MidiasPage() {
             Novo Álbum
           </button>
         </header>
+
+        {/* Gestão de Transmissão ao Vivo */}
+        <GestaoTransmissaoCard onToast={handleToast} />
 
         {/* Barra de Busca */}
         <div className="flex flex-col sm:flex-row gap-3">
