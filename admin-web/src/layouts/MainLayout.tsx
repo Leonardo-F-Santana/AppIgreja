@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, Bell, LogOut, 
   Users, User, HandHeart, Menu, X, Wallet, ShieldCheck, Church, UserPlus, GraduationCap,
-  Image, Activity, CalendarDays
+  Image, Activity, CalendarDays, Baby
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import type { UserRole } from '../contexts/AuthContext';
@@ -20,6 +20,7 @@ const MENU_PERMISSIONS: Record<string, UserRole[]> = {
   'Células':          ['admin', 'secretaria', 'recepcao'],
   'Escolas':          ['admin', 'secretaria', 'recepcao'],
   'Reuniões':         ['admin', 'secretaria'],
+  'Ministério Kids':  ['admin', 'secretaria'],
   'Avisos':           ['admin', 'secretaria', 'recepcao', 'midia'],
   'Mídias':           ['admin', 'midia'],
   'Financeiro':       ['admin', 'tesouraria'],
@@ -50,6 +51,7 @@ export default function MainLayout() {
     { path: '/celulas', icon: <Users size={20} />, label: 'Células' },
     { path: '/escolas', icon: <GraduationCap size={20} />, label: 'Escolas' },
     { path: '/reunioes', icon: <CalendarDays size={20} />, label: 'Reuniões' },
+    { path: '/kids', icon: <Baby size={20} />, label: 'Ministério Kids' },
     { path: '/avisos', icon: <Bell size={20} />, label: 'Avisos' },
     { path: '/midias', icon: <Image size={20} />, label: 'Mídias' },
     { path: '/financeiro', icon: <Wallet size={20} />, label: 'Financeiro' },

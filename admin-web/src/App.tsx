@@ -22,6 +22,7 @@ import MidiasPage from './pages/MidiasPage';
 import LogsAuditoriaPage from './pages/LogsAuditoriaPage';
 import CadastroPage from './pages/CadastroPage';
 import ReunioesPage from './pages/ReunioesPage';
+import MinisterioKidsPage from './pages/MinisterioKidsPage';
 
 // Cargos bloqueados nas rotas que a Recepção não deve acessar
 const SEM_RECEPCAO = ['recepcao'];
@@ -63,6 +64,11 @@ function App() {
             <Route path="reunioes" element={
               <ProtectedRoute allowedRoles={['admin', 'secretaria']}>
                 <ReunioesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="kids" element={
+              <ProtectedRoute allowedRoles={['admin', 'secretaria']}>
+                <MinisterioKidsPage />
               </ProtectedRoute>
             } />
             <Route path="cultos" element={<CultosPage />} />

@@ -19,6 +19,7 @@ export interface ParticipanteReuniao {
   membroId: string;
   nome: string;
   presente: boolean;
+  justificativa?: string;
 }
 
 export interface Reuniao {

@@ -165,6 +165,7 @@ export default function TabLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="home" />
+        <Stack.Screen name="kids" />
       </Stack>
 
       {!animationComplete && (

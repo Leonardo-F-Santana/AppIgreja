@@ -120,7 +120,7 @@ const gridMenu = [
   { id: '3', title: 'Células', icon: 'user-friends', family: 'FontAwesome5', route: '/celulas' },
   { id: '4', title: 'Eventos', icon: 'calendar', family: 'Feather', route: '/eventos' },
   { id: '5', title: 'Social', icon: 'share-2', family: 'Feather', route: '/midias' },
-  { id: '6', title: 'Devocional', icon: 'book-open', family: 'Feather', route: '/devocional' },
+  { id: '6', title: 'Kids', icon: 'child', family: 'FontAwesome5', route: '/kids' },
   { id: '7', title: 'Pedidos', icon: 'praying-hands', family: 'FontAwesome5', route: '/pedidos' },
   { id: '8', title: 'Doações', icon: 'hand-holding-heart', family: 'FontAwesome5', route: '/doacoes' },
 ];

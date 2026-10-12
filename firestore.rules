@@ -125,6 +125,11 @@ service cloud.firestore {
       allow read, write: if isAuth();
     }
 
+    // Coleção: kids (Ministério Kids)
+    match /kids/{document=**} {
+      allow read, write: if isAuth();
+    }
+
     // Coleção: configuracoes (meta de células, etc.)
     match /configuracoes/{document=**} {
       allow read: if isAuth();
