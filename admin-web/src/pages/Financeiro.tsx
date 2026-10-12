@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { 
   Wallet, TrendingUp, TrendingDown, Plus, X, 
-  Search, FileText, Calendar as CalendarIcon, Tag, Download
+  Search, FileText, Calendar as CalendarIcon, Tag, Download,
+  Target
 } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { exportToCSV } from '../utils/exportCSV';
 import jsPDF from 'jspdf';
@@ -54,6 +55,13 @@ export default function Financeiro() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Campanha Modal State
+  const [isCampanhaModalOpen, setIsCampanhaModalOpen] = useState(false);
+  const [isSubmittingCampanha, setIsSubmittingCampanha] = useState(false);
+  const [tituloCampanha, setTituloCampanha] = useState('');
+  const [descricaoCampanha, setDescricaoCampanha] = useState('');
+  const [chavePixCampanha, setChavePixCampanha] = useState('');
   
   // Form State
   const [tipo, setTipo] = useState<'entrada' | 'saida'>('entrada');
@@ -169,6 +177,40 @@ export default function Financeiro() {
       alert("Houve um erro ao salvar a transação.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // ─── Salvar Campanha de Arrecadação ────────────────────────────────────────
+  const handleSalvarCampanha = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tituloCampanha.trim() || !chavePixCampanha.trim()) {
+      alert('Por favor, preencha o título e a chave Pix da campanha.');
+      return;
+    }
+
+    setIsSubmittingCampanha(true);
+    try {
+      await addDoc(collection(db, 'doacoes'), {
+        titulo: tituloCampanha.trim(),
+        descricao: descricaoCampanha.trim(),
+        tipo: 'PIX',
+        chaveOuConta: chavePixCampanha.trim(),
+        chavePix: chavePixCampanha.trim(),
+        ativo: true,
+        dataCriacao: serverTimestamp(),
+        criadoEm: serverTimestamp(),
+      });
+
+      setTituloCampanha('');
+      setDescricaoCampanha('');
+      setChavePixCampanha('');
+      setIsCampanhaModalOpen(false);
+      alert('Campanha de arrecadação criada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar campanha:', error);
+      alert('Houve um erro ao salvar a campanha de arrecadação.');
+    } finally {
+      setIsSubmittingCampanha(false);
     }
   };
 
@@ -446,6 +488,14 @@ export default function Financeiro() {
             </button>
 
             <button
+              onClick={() => setIsCampanhaModalOpen(true)}
+              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-colors shadow-sm whitespace-nowrap justify-center"
+            >
+              <Target size={18} className="text-blue-600" />
+              <span>Nova Campanha</span>
+            </button>
+
+            <button
               onClick={handleOpenModal}
               className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap"
             >
@@ -657,6 +707,102 @@ export default function Financeiro() {
                   'Salvar Transação'
                 )}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nova Campanha */}
+      {isCampanhaModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsCampanhaModalOpen(false); }}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 p-2.5 rounded-xl text-blue-700">
+                  <Target size={20} />
+                </div>
+                <div>
+                  <h2 className="text-gray-900 font-bold text-lg leading-tight">Nova Campanha de Arrecadação</h2>
+                  <p className="text-gray-400 text-xs font-medium mt-0.5">Disponibilizada diretamente no App dos membros</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsCampanhaModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSalvarCampanha} className="p-8 flex flex-col gap-5">
+              {/* Título */}
+              <div>
+                <label className={labelClass}>Título da Campanha *</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Reforma do Templo ou Missões no Sertão"
+                  value={tituloCampanha}
+                  onChange={(e) => setTituloCampanha(e.target.value)}
+                  required
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <label className={labelClass}>Descrição da Campanha</label>
+                <textarea 
+                  rows={3}
+                  placeholder="Explique o propósito desta campanha aos membros..."
+                  value={descricaoCampanha}
+                  onChange={(e) => setDescricaoCampanha(e.target.value)}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              {/* Chave Pix */}
+              <div>
+                <label className={labelClass}>Chave Pix *</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: financeiro@igreja.com ou (11) 99999-9999"
+                  value={chavePixCampanha}
+                  onChange={(e) => setChavePixCampanha(e.target.value)}
+                  required
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Ações */}
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsCampanhaModalOpen(false)}
+                  disabled={isSubmittingCampanha}
+                  className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingCampanha || !tituloCampanha.trim() || !chavePixCampanha.trim()}
+                  className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-sm shadow-blue-600/30 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmittingCampanha ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Salvando...</span>
+                    </div>
+                  ) : (
+                    'Salvar Campanha'
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
