@@ -8,7 +8,6 @@ import {
   Trash2,
   Phone,
   User,
-  Calendar,
   Sparkles,
   Heart,
   Eye,

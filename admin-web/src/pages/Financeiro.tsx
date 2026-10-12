@@ -3,9 +3,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { 
   Wallet, TrendingUp, TrendingDown, Plus, X, 
   Search, FileText, Calendar as CalendarIcon, Tag, Download,
-  Target
+  Target, Pencil, Trash2
 } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, addDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { exportToCSV } from '../utils/exportCSV';
 import jsPDF from 'jspdf';
@@ -13,6 +13,17 @@ import autoTable from 'jspdf-autotable';
 import logoIgreja from '../assets/logo-black.png';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
+
+export interface Campanha {
+  id: string;
+  titulo: string;
+  descricao: string;
+  tipo?: string;
+  chaveOuConta?: string;
+  chavePix?: string;
+  ativo?: boolean;
+  dataCriacao?: Timestamp | null;
+}
 
 export interface Transacao {
   id: string;
@@ -59,6 +70,8 @@ export default function Financeiro() {
   // Campanha Modal State
   const [isCampanhaModalOpen, setIsCampanhaModalOpen] = useState(false);
   const [isSubmittingCampanha, setIsSubmittingCampanha] = useState(false);
+  const [campanhas, setCampanhas] = useState<Campanha[]>([]);
+  const [campanhaEditando, setCampanhaEditando] = useState<Campanha | null>(null);
   const [tituloCampanha, setTituloCampanha] = useState('');
   const [descricaoCampanha, setDescricaoCampanha] = useState('');
   const [chavePixCampanha, setChavePixCampanha] = useState('');
@@ -84,6 +97,36 @@ export default function Financeiro() {
       console.error("Erro ao buscar transações:", error);
       setIsLoading(false);
     });
+
+    return () => unsubscribe();
+  }, []);
+
+  // ─── Efeito para buscar campanhas de arrecadação em tempo real ─────────────
+  useEffect(() => {
+    const q = query(collection(db, 'doacoes'), orderBy('dataCriacao', 'desc'));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list: Campanha[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          list.push({
+            id: docSnap.id,
+            titulo: data.titulo || '',
+            descricao: data.descricao || '',
+            tipo: data.tipo || 'PIX',
+            chaveOuConta: data.chaveOuConta || data.chavePix || '',
+            chavePix: data.chavePix || data.chaveOuConta || '',
+            ativo: data.ativo ?? true,
+            dataCriacao: data.dataCriacao || data.criadoEm || null,
+          });
+        });
+        setCampanhas(list);
+      },
+      (error) => {
+        console.error('Erro ao buscar campanhas:', error);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -180,7 +223,36 @@ export default function Financeiro() {
     }
   };
 
-  // ─── Salvar Campanha de Arrecadação ────────────────────────────────────────
+  // ─── Ações de Campanhas de Arrecadação ────────────────────────────────────
+  const handleAbrirEdicaoCampanha = (campanha: Campanha) => {
+    setCampanhaEditando(campanha);
+    setTituloCampanha(campanha.titulo);
+    setDescricaoCampanha(campanha.descricao || '');
+    setChavePixCampanha(campanha.chavePix || campanha.chaveOuConta || '');
+    setIsCampanhaModalOpen(true);
+  };
+
+  const handleFecharModalCampanha = () => {
+    setIsCampanhaModalOpen(false);
+    setCampanhaEditando(null);
+    setTituloCampanha('');
+    setDescricaoCampanha('');
+    setChavePixCampanha('');
+  };
+
+  const handleExcluirCampanha = async (id: string, titulo: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir a campanha "${titulo}"?`)) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'doacoes', id));
+      alert('Campanha excluída com sucesso.');
+    } catch (error) {
+      console.error('Erro ao excluir campanha:', error);
+      alert('Erro ao excluir campanha.');
+    }
+  };
+
   const handleSalvarCampanha = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tituloCampanha.trim() || !chavePixCampanha.trim()) {
@@ -190,22 +262,32 @@ export default function Financeiro() {
 
     setIsSubmittingCampanha(true);
     try {
-      await addDoc(collection(db, 'doacoes'), {
-        titulo: tituloCampanha.trim(),
-        descricao: descricaoCampanha.trim(),
-        tipo: 'PIX',
-        chaveOuConta: chavePixCampanha.trim(),
-        chavePix: chavePixCampanha.trim(),
-        ativo: true,
-        dataCriacao: serverTimestamp(),
-        criadoEm: serverTimestamp(),
-      });
+      if (campanhaEditando) {
+        // Atualização da campanha existente
+        await updateDoc(doc(db, 'doacoes', campanhaEditando.id), {
+          titulo: tituloCampanha.trim(),
+          descricao: descricaoCampanha.trim(),
+          tipo: 'PIX',
+          chaveOuConta: chavePixCampanha.trim(),
+          chavePix: chavePixCampanha.trim(),
+        });
+        alert('Campanha atualizada com sucesso!');
+      } else {
+        // Criação de nova campanha
+        await addDoc(collection(db, 'doacoes'), {
+          titulo: tituloCampanha.trim(),
+          descricao: descricaoCampanha.trim(),
+          tipo: 'PIX',
+          chaveOuConta: chavePixCampanha.trim(),
+          chavePix: chavePixCampanha.trim(),
+          ativo: true,
+          dataCriacao: serverTimestamp(),
+          criadoEm: serverTimestamp(),
+        });
+        alert('Campanha de arrecadação criada com sucesso!');
+      }
 
-      setTituloCampanha('');
-      setDescricaoCampanha('');
-      setChavePixCampanha('');
-      setIsCampanhaModalOpen(false);
-      alert('Campanha de arrecadação criada com sucesso!');
+      handleFecharModalCampanha();
     } catch (error) {
       console.error('Erro ao salvar campanha:', error);
       alert('Houve um erro ao salvar a campanha de arrecadação.');
@@ -571,6 +653,114 @@ export default function Financeiro() {
         </div>
       </div>
 
+      {/* ─── Seção de Campanhas de Arrecadação ─────────────────────────── */}
+      <div className="mt-8 flex flex-col gap-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">
+                Campanhas de Arrecadação
+              </h2>
+              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                {campanhas.length} {campanhas.length === 1 ? 'campanha' : 'campanhas'}
+              </span>
+            </div>
+            <p className="text-gray-500 text-sm mt-0.5 font-medium">
+              Campanhas ativas exibidas para os membros no App Mobile.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              setCampanhaEditando(null);
+              setTituloCampanha('');
+              setDescricaoCampanha('');
+              setChavePixCampanha('');
+              setIsCampanhaModalOpen(true);
+            }}
+            className="self-start sm:self-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-sm shadow-blue-600/20 active:scale-95"
+          >
+            <Plus size={16} />
+            <span>Nova Campanha</span>
+          </button>
+        </div>
+
+        {campanhas.length === 0 ? (
+          <div className="bg-white border border-gray-100 rounded-3xl p-10 text-center flex flex-col items-center justify-center gap-3 shadow-sm">
+            <div className="bg-blue-50 p-4 rounded-2xl text-blue-600">
+              <Target size={28} />
+            </div>
+            <div>
+              <p className="text-gray-900 font-bold text-base">Nenhuma campanha cadastrada</p>
+              <p className="text-gray-500 text-xs mt-1">
+                Crie uma campanha com chave Pix para arrecadar fundos diretamente pelo aplicativo.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {campanhas.map((campanha) => (
+              <div
+                key={campanha.id}
+                className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-5 group"
+              >
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="bg-blue-100 p-2.5 rounded-2xl text-blue-700 flex-shrink-0">
+                        <Target size={20} />
+                      </div>
+                      <h3 className="text-gray-900 font-bold text-base leading-tight truncate">
+                        {campanha.titulo}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {campanha.descricao ? (
+                    <p className="text-gray-600 text-xs leading-relaxed line-clamp-3">
+                      {campanha.descricao}
+                    </p>
+                  ) : (
+                    <p className="text-gray-400 text-xs italic">Sem descrição informada.</p>
+                  )}
+
+                  {/* Chave Pix */}
+                  <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Chave Pix
+                    </span>
+                    <span className="text-xs font-bold text-gray-800 break-all select-all font-mono">
+                      {campanha.chavePix || campanha.chaveOuConta}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Rodapé com Ações */}
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => handleAbrirEdicaoCampanha(campanha)}
+                    className="flex-1 py-2 px-3 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-blue-600 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                    title="Editar Campanha"
+                  >
+                    <Pencil size={14} />
+                    <span>Editar</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleExcluirCampanha(campanha.id, campanha.titulo)}
+                    className="py-2 px-3 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                    title="Excluir Campanha"
+                  >
+                    <Trash2 size={14} />
+                    <span>Excluir</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Modal Nova Transação */}
       {isModalOpen && (
         <div 
@@ -712,11 +902,11 @@ export default function Financeiro() {
         </div>
       )}
 
-      {/* Modal Nova Campanha */}
+      {/* Modal Nova / Editar Campanha */}
       {isCampanhaModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setIsCampanhaModalOpen(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) handleFecharModalCampanha(); }}
         >
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
@@ -726,12 +916,14 @@ export default function Financeiro() {
                   <Target size={20} />
                 </div>
                 <div>
-                  <h2 className="text-gray-900 font-bold text-lg leading-tight">Nova Campanha de Arrecadação</h2>
+                  <h2 className="text-gray-900 font-bold text-lg leading-tight">
+                    {campanhaEditando ? 'Editar Campanha de Arrecadação' : 'Nova Campanha de Arrecadação'}
+                  </h2>
                   <p className="text-gray-400 text-xs font-medium mt-0.5">Disponibilizada diretamente no App dos membros</p>
                 </div>
               </div>
               <button 
-                onClick={() => setIsCampanhaModalOpen(false)}
+                onClick={handleFecharModalCampanha}
                 className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 <X size={20} />
@@ -782,7 +974,7 @@ export default function Financeiro() {
               <div className="pt-2 flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsCampanhaModalOpen(false)}
+                  onClick={handleFecharModalCampanha}
                   disabled={isSubmittingCampanha}
                   className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors"
                 >
@@ -799,7 +991,7 @@ export default function Financeiro() {
                       <span>Salvando...</span>
                     </div>
                   ) : (
-                    'Salvar Campanha'
+                    campanhaEditando ? 'Salvar Alterações' : 'Salvar Campanha'
                   )}
                 </button>
               </div>
