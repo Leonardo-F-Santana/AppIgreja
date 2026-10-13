@@ -13,14 +13,20 @@ import {
   Eye,
   AlertCircle,
   ShieldAlert,
+  Megaphone,
+  Send,
 } from 'lucide-react';
 import {
   ouvirKids,
   addKid,
   updateKid,
   deleteKid,
+  ouvirAvisosKids,
+  addAvisoKids,
+  deleteAvisoKids,
   type Crianca,
   type FichaInclusao,
+  type AvisoKids,
 } from '../services/kidsService';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -81,6 +87,16 @@ function calcularIdade(dataNascStr: string): string {
     return `${anos} ${anos === 1 ? 'ano' : 'anos'}`;
   } catch {
     return '—';
+  }
+}
+
+function formatarDataAviso(data: AvisoKids['dataCriacao']): string {
+  if (!data) return 'Agora mesmo';
+  try {
+    const d = data instanceof Date ? data : data.toDate();
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
   }
 }
 
@@ -563,6 +579,12 @@ export default function MinisterioKidsPage() {
   const [kidDetalhes, setKidDetalhes] = useState<Crianca | null>(null);
   const [salvando, setSalvando] = useState(false);
 
+  // Mural de Avisos Kids
+  const [avisosKids, setAvisosKids] = useState<AvisoKids[]>([]);
+  const [novoAvisoTitulo, setNovoAvisoTitulo] = useState('');
+  const [novoAvisoMensagem, setNovoAvisoMensagem] = useState('');
+  const [publicandoAviso, setPublicandoAviso] = useState(false);
+
   // Listener em tempo real
   useEffect(() => {
     setCarregando(true);
@@ -572,6 +594,40 @@ export default function MinisterioKidsPage() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Listener em tempo real dos avisos kids
+  useEffect(() => {
+    const unsubscribe = ouvirAvisosKids((dados) => setAvisosKids(dados));
+    return () => unsubscribe();
+  }, []);
+
+  // Publicar aviso kids
+  const handlePublicarAviso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!novoAvisoTitulo.trim() || !novoAvisoMensagem.trim()) return;
+    setPublicandoAviso(true);
+    try {
+      await addAvisoKids({ titulo: novoAvisoTitulo.trim(), mensagem: novoAvisoMensagem.trim() });
+      setNovoAvisoTitulo('');
+      setNovoAvisoMensagem('');
+    } catch (error: any) {
+      console.error('Erro ao publicar aviso kids:', error);
+      alert(`Erro ao publicar aviso: ${error?.message || 'Tente novamente.'}`);
+    } finally {
+      setPublicandoAviso(false);
+    }
+  };
+
+  // Excluir aviso kids
+  const handleExcluirAviso = async (id: string, titulo: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o aviso "${titulo}"?`)) return;
+    try {
+      await deleteAvisoKids(id);
+    } catch (error) {
+      console.error('Erro ao excluir aviso kids:', error);
+      alert('Erro ao excluir aviso.');
+    }
+  };
 
   // Filtragem
   const kidsFiltradas = useMemo(() => {
@@ -863,6 +919,102 @@ export default function MinisterioKidsPage() {
             })}
           </div>
         )}
+
+        {/* Mural de Avisos - Kids */}
+        <section className="bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col gap-5">
+          <div className="flex items-center gap-3">
+            <div className="bg-yellow-100 p-2.5 rounded-2xl text-yellow-700">
+              <Megaphone size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 leading-tight">Mural de Avisos - Kids</h2>
+              <p className="text-xs text-gray-400 font-medium mt-0.5">
+                Avisos publicados aqui aparecem no app, na tela do Ministério Kids.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Formulário */}
+            <form
+              onSubmit={handlePublicarAviso}
+              className="flex flex-col gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 lg:col-span-1 h-fit"
+            >
+              <div>
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1 block">Título</label>
+                <input
+                  id="aviso-kids-titulo"
+                  type="text"
+                  required
+                  value={novoAvisoTitulo}
+                  onChange={(e) => setNovoAvisoTitulo(e.target.value)}
+                  placeholder="Ex: Festa das Crianças"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1 block">Mensagem</label>
+                <textarea
+                  id="aviso-kids-mensagem"
+                  required
+                  rows={4}
+                  value={novoAvisoMensagem}
+                  onChange={(e) => setNovoAvisoMensagem(e.target.value)}
+                  placeholder="Escreva o aviso para os pais..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                />
+              </div>
+              <button
+                id="aviso-kids-publicar"
+                type="submit"
+                disabled={publicandoAviso || !novoAvisoTitulo.trim() || !novoAvisoMensagem.trim()}
+                className="py-2.5 px-4 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {publicandoAviso ? <Spinner /> : <Send size={14} />}
+                Publicar Aviso
+              </button>
+            </form>
+
+            {/* Lista de Avisos */}
+            <div className="lg:col-span-2">
+              {avisosKids.length === 0 ? (
+                <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-gray-200 p-6">
+                  <Megaphone size={24} className="text-gray-300 mb-2" />
+                  <p className="text-sm font-bold text-gray-700">Nenhum aviso publicado.</p>
+                  <p className="text-xs text-gray-400 mt-1">Use o formulário ao lado para publicar o primeiro aviso.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {avisosKids.map((aviso) => (
+                    <div
+                      key={aviso.id}
+                      className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex flex-col gap-2 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-sm font-bold text-yellow-900 leading-tight break-words">
+                          {aviso.titulo}
+                        </h3>
+                        <button
+                          onClick={() => aviso.id && handleExcluirAviso(aviso.id, aviso.titulo)}
+                          className="p-2 rounded-xl text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors flex-shrink-0"
+                          title="Excluir Aviso"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line break-words">
+                        {aviso.mensagem}
+                      </p>
+                      <span className="text-[11px] text-yellow-700/70 font-medium mt-auto">
+                        {formatarDataAviso(aviso.dataCriacao)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     </>
   );

@@ -14,6 +14,8 @@ import {
   StatusBar,
   Platform,
   KeyboardAvoidingView,
+  Image,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -36,6 +38,9 @@ import {
   Sun,
   Smile,
   Info,
+  Users,
+  Megaphone,
+  BookOpen,
 } from 'lucide-react-native';
 import {
   collection,
@@ -50,6 +55,9 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../config/firebase';
+import { ouvirAvisosKids, type AvisoKids } from '../services/kidsService';
+
+const topoKids = require('../../assets/Img/topo_kids.png');
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -126,6 +134,9 @@ export default function MinisterioKidsScreen() {
   const [criancas, setCriancas] = useState<Crianca[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandidoId, setExpandidoId] = useState<string | null>(null);
+
+  // Mural de Avisos Kids
+  const [avisos, setAvisos] = useState<AvisoKids[]>([]);
 
   // Estados do Modal
   const [modalVisivel, setModalVisivel] = useState(false);
@@ -211,6 +222,12 @@ export default function MinisterioKidsScreen() {
     };
   }, []);
 
+  // ─── Escutar Coleção avisos_kids (mais recentes primeiro) ──────────────
+  useEffect(() => {
+    const unsubscribe = ouvirAvisosKids((dados) => setAvisos(dados));
+    return () => unsubscribe();
+  }, []);
+
   // ─── Ações de Formulário ───────────────────────────────────────────────────
 
   const resetForm = () => {
@@ -259,11 +276,11 @@ export default function MinisterioKidsScreen() {
     try {
       const fichaInclusaoData = precisaAtencaoEspecial
         ? {
-            condicao: condicao.trim(),
-            alergias: alergias.trim(),
-            gatilhos: gatilhos.trim(),
-            comoAcalmar: comoAcalmar.trim(),
-          }
+          condicao: condicao.trim(),
+          alergias: alergias.trim(),
+          gatilhos: gatilhos.trim(),
+          comoAcalmar: comoAcalmar.trim(),
+        }
         : null;
 
       await addDoc(collection(db, 'kids'), {
@@ -314,281 +331,427 @@ export default function MinisterioKidsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#EFF6FF" />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
 
-      {/* ─── Header Lúdico e Vibrante ──────────────────────────────────────── */}
-      <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 16) }]}>
-        <View style={styles.headerTopRow}>
+      {/* ─── Scroll Principal da Página (Desbloqueia rolagem suave de todo o conteúdo) ─ */}
+      <ScrollView
+        style={styles.pageScroll}
+        contentContainerStyle={[
+          styles.pageScrollContent,
+          { paddingBottom: insets.bottom + 40 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ─── 1. O Topo Visível (Sem Cortes) ───────────────────────────────── */}
+        <View style={styles.topoContainer} className="relative w-full">
+          {/* Botão de Voltar discreto com fundo circular translúcido no canto superior esquerdo */}
           <TouchableOpacity
             onPress={() => router.back()}
-            style={styles.backButton}
+            style={[styles.backButtonCircle, { top: Math.max(insets.top + 8, 16) }]}
+            className="absolute left-4 z-20 w-10 h-10 rounded-full bg-black/30 items-center justify-center"
             activeOpacity={0.7}
+            accessibilityLabel="Voltar"
           >
-            <ChevronLeft size={24} color="#1E293B" />
+            <ChevronLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
 
-          <View style={styles.headerBadge}>
-            <Sparkles size={14} color="#F59E0B" />
-            <Text style={styles.headerBadgeText}>Espaço dos Pais</Text>
-          </View>
+
+          {/* Imagem de Topo inteira e centralizada */}
+          <Image
+            source={topoKids}
+            resizeMode="contain"
+            className="w-full h-[240px]"
+            style={styles.topoKidsImage}
+            accessibilityLabel="Ministério Kids"
+          />
         </View>
 
-        <View style={styles.headerContent}>
-          <View style={styles.titleRow}>
-            <Text style={styles.headerTitle}>Ministério Kids</Text>
-            <View style={styles.headerIconBubble}>
-              <Sun size={26} color="#F59E0B" />
-            </View>
-          </View>
-          <Text style={styles.headerSubtitle}>
-            Cadastre e acompanhe seus filhos com todo amor, segurança e inclusão 💛
-          </Text>
-        </View>
-
-        {/* Banner Informativo Lúdico */}
-        <LinearGradient
-          colors={['#3B82F6', '#6366F1']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.bannerCard}
-        >
-          <View style={styles.bannerInfo}>
-            <View style={styles.bannerIconCircle}>
-              <Heart size={22} color="#FFFFFF" fill="#FFFFFF" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>Cuidado que acolhe cada criança</Text>
-              <Text style={styles.bannerDesc}>
-                Equipe capacitada para incluir crianças atípicas e garantir um momento seguro e alegre.
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.bannerMetricsRow}>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricNumber}>{criancas.length}</Text>
-              <Text style={styles.metricLabel}>
-                {criancas.length === 1 ? 'Filho Cadastrado' : 'Filhos Cadastrados'}
-              </Text>
-            </View>
-            {totalComInclusao > 0 && (
-              <View style={styles.metricDivider} />
-            )}
-            {totalComInclusao > 0 && (
-              <View style={styles.metricItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[styles.metricNumber, { color: '#FDE047' }]}>
-                    {totalComInclusao}
-                  </Text>
-                  <Text style={{ fontSize: 13, marginLeft: 4 }}>💛</Text>
+        {/* ─── 2. Container de Conteúdo (Sem Margens Negativas) ─────────────── */}
+        <View className="px-4 pb-6" style={styles.contentContainer}>
+          {/* Card Azul de Resumo */}
+          <View style={styles.blueCardWrapper} className="w-full mt-1 z-20">
+            <LinearGradient
+              colors={['#3B82F6', '#2563EB']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.blueCard}
+              className="rounded-[24px] p-5 shadow-lg shadow-blue-500/25"
+            >
+              {/* Cabeçalho do Card */}
+              <View style={styles.blueCardHeader} className="flex-row items-center mb-3.5">
+                <View style={styles.blueCardIconCircle} className="w-11 h-11 rounded-full bg-white/20 items-center justify-center mr-3">
+                  <Heart size={22} color="#FFFFFF" fill="#FFFFFF" />
                 </View>
-                <Text style={styles.metricLabel}>Atenção Especial</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.blueCardTitle} className="text-white text-base font-bold">
+                    Cuidado que acolhe cada criança
+                  </Text>
+                  <Text style={styles.blueCardDesc} className="text-blue-100 text-xs mt-0.5 leading-4">
+                    Equipe capacitada para incluir crianças atípicas e garantir um momento seguro e alegre.
+                  </Text>
+                </View>
               </View>
-            )}
+
+              {/* Duas Colunas com linha vertical translúcida */}
+              <View style={styles.blueCardMetricsRow} className="flex-row items-center bg-white/15 rounded-2xl py-2.5 px-3 border border-white/10">
+                {/* Coluna 1: Filhos Cadastrados */}
+                <View style={styles.blueCardMetricColLeft} className="flex-1 items-center border-r border-blue-400">
+                  <Text style={styles.blueMetricNumber} className="text-white text-xl font-extrabold">
+                    {criancas.length}
+                  </Text>
+                  <Text style={styles.blueMetricLabel} className="text-blue-100 text-xs font-medium mt-0.5">
+                    {criancas.length === 1 ? 'Filho Cadastrado' : 'Filhos Cadastrados'}
+                  </Text>
+                </View>
+
+                {/* Coluna 2: Atenção Especial */}
+                <View style={styles.blueCardMetricColRight} className="flex-1 items-center">
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[styles.blueMetricNumber, { color: '#FDE047' }]} className="text-amber-300 text-xl font-extrabold">
+                      {totalComInclusao}
+                    </Text>
+                    <Text style={{ fontSize: 14, marginLeft: 4 }}>💛</Text>
+                  </View>
+                  <Text style={styles.blueMetricLabel} className="text-blue-100 text-xs font-medium mt-0.5">
+                    Atenção Especial
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
           </View>
-        </LinearGradient>
-      </View>
 
-      {/* ─── Botão de Ação Rápida: Cadastrar Filho ──────────────────────────── */}
-      <View style={styles.actionRowContainer}>
-        <Text style={styles.sectionTitle}>Meus Filhos</Text>
-
-        <TouchableOpacity
-          onPress={abrirModal}
-          style={styles.addKidButton}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#EC4899', '#F43F5E']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.addKidGradient}
-          >
-            <Plus size={18} color="#FFFFFF" strokeWidth={3} />
-            <Text style={styles.addKidButtonText}>Adicionar Filho</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-
-      {/* ─── Lista de Crianças ──────────────────────────────────────────────── */}
-      {loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>Carregando crianças cadastradas...</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.listContainer}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + 40 },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {criancas.length === 0 ? (
-            /* Empty State */
-            <View style={styles.emptyCard}>
-              <View style={styles.emptyIconCircle}>
-                <Baby size={42} color="#3B82F6" />
+          {/* ─── 3. Avisos e Novidades ────────────────────────────────────────── */}
+          <View style={styles.avisosContainer} className="mt-4 p-4 bg-yellow-50 rounded-[24px] border border-yellow-200">
+            <View style={styles.avisosHeaderRow} className="flex-row items-center justify-between mb-3">
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Megaphone size={19} color="#D97706" />
+                <Text style={styles.avisosHeaderTitle} className="text-base font-extrabold text-slate-800 ml-2">
+                  Avisos e Novidades
+                </Text>
               </View>
-              <Text style={styles.emptyTitle}>Nenhuma criança cadastrada ainda</Text>
-              <Text style={styles.emptyText}>
-                Cadastre seus pequenos para que nossos tios e tias voluntários tenham todas
-                as informações necessárias para cuidar com muito amor e segurança!
-              </Text>
+
               <TouchableOpacity
-                onPress={abrirModal}
-                style={styles.emptyActionButton}
-                activeOpacity={0.85}
+                onPress={() => router.push('/avisos')}
+                style={styles.verTodosButton}
+                className="bg-yellow-200 px-3 py-1.5 rounded-full"
+                activeOpacity={0.7}
               >
-                <Plus size={18} color="#FFFFFF" />
-                <Text style={styles.emptyActionButtonText}>Cadastrar Meu Filho(a) Agora</Text>
+                <Text style={styles.verTodosButtonText} className="text-xs font-bold text-amber-900">
+                  Ver todos &gt;
+                </Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            criancas.map((crianca, idx) => {
-              const idade = calcularIdade(crianca.dataNascimento);
-              const temInclusao = !!crianca.fichaInclusao;
-              const expandido = expandidoId === crianca.id;
 
-              // Cores dinâmicas para avatar
-              const coresAvatar = [
-                ['#FDE68A', '#F59E0B'],
-                ['#BAE6FD', '#0284C7'],
-                ['#FBCFE8', '#DB2777'],
-                ['#DDD6FE', '#7C3AED'],
-                ['#A7F3D0', '#059669'],
-              ];
-              const cor = coresAvatar[idx % coresAvatar.length];
-
-              return (
-                <View key={crianca.id} style={styles.kidCard}>
-                  {/* Linha Principal do Card */}
-                  <View style={styles.kidCardHeader}>
-                    {/* Avatar Lúdico */}
-                    <LinearGradient
-                      colors={cor as [string, string]}
-                      style={styles.avatarCircle}
-                    >
-                      <Text style={styles.avatarInitials}>
-                        {crianca.nome.charAt(0).toUpperCase()}
+            {avisos.length === 0 ? (
+              <View style={styles.avisoCardEmpty} className="bg-[#FFFDF7] rounded-2xl p-4 border border-amber-200/60 items-center justify-center py-5">
+                <Text style={styles.avisoCardEmptyText} className="text-xs text-amber-800">
+                  Nenhum aviso novo no momento. Fique ligado! ✨
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.avisosScrollContent}
+              >
+                {avisos.map((aviso, idx) => (
+                  <View
+                    key={aviso.id ?? idx}
+                    style={styles.avisoCard}
+                    className="w-[270px] mr-3 bg-[#FFFDF7] rounded-2xl p-4 border border-amber-200/70 shadow-sm"
+                  >
+                    {/* Tag Amarela */}
+                    <View style={styles.avisoTag} className="self-start bg-amber-100 px-2.5 py-0.5 rounded-full mb-2 border border-amber-200">
+                      <Text style={styles.avisoTagText} className="text-[11px] font-bold text-amber-800">
+                        Ministério Kids
                       </Text>
-                    </LinearGradient>
-
-                    {/* Dados Básicos */}
-                    <View style={styles.kidInfoCol}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <Text style={styles.kidName}>{crianca.nome}</Text>
-                        {temInclusao && (
-                          <View style={styles.specialBadge}>
-                            <Text style={styles.specialBadgeText}>💛 Atenção Especial</Text>
-                          </View>
-                        )}
-                      </View>
-
-                      <View style={styles.kidMetaRow}>
-                        {idade ? (
-                          <View style={styles.kidMetaItem}>
-                            <Smile size={13} color="#64748B" />
-                            <Text style={styles.kidMetaText}>{idade}</Text>
-                          </View>
-                        ) : null}
-
-                        <View style={styles.kidMetaItem}>
-                          <Calendar size={13} color="#64748B" />
-                          <Text style={styles.kidMetaText}>{crianca.dataNascimento}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.kidMetaRow}>
-                        <View style={styles.kidMetaItem}>
-                          <Phone size={13} color="#64748B" />
-                          <Text style={styles.kidMetaText}>
-                            Emergência: {crianca.telefoneEmergencia}
-                          </Text>
-                        </View>
-                      </View>
                     </View>
 
-                    {/* Botão de Excluir */}
-                    <TouchableOpacity
-                      onPress={() => confirmarExclusao(crianca)}
-                      style={styles.deleteButton}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    {/* Título */}
+                    <Text
+                      style={styles.avisoTitulo}
+                      className="text-sm font-bold text-slate-800 mb-1"
+                      numberOfLines={2}
                     >
-                      <Trash2 size={16} color="#94A3B8" />
-                    </TouchableOpacity>
+                      {aviso.titulo}
+                    </Text>
+
+                    {/* Mensagem */}
+                    <Text
+                      style={styles.avisoMensagem}
+                      className="text-xs text-slate-600 leading-5"
+                      numberOfLines={3}
+                    >
+                      {aviso.mensagem}
+                    </Text>
                   </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
 
-                  {/* Detalhes de Inclusão (Expansível ou Exibido) */}
-                  {temInclusao && crianca.fichaInclusao && (
-                    <View style={styles.inclusaoBox}>
-                      <TouchableOpacity
-                        onPress={() =>
-                          setExpandidoId(expandido ? null : crianca.id)
-                        }
-                        style={styles.inclusaoToggleHeader}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.inclusaoIconTitle}>
-                          <Heart size={16} color="#D97706" fill="#FDE68A" />
-                          <Text style={styles.inclusaoBoxTitle}>
-                            Ficha de Inclusão Ativa
+          {/* ─── 4. Menu de Ações Rápidas (3 Botões) ───────────────────────────── */}
+          <View style={styles.quickActionsContainer} className="mt-4 flex-row justify-between w-full">
+            {/* Botão 1: Cadastro dos Filhos */}
+            <TouchableOpacity
+              onPress={abrirModal}
+              style={styles.quickActionCardPurple}
+              className="flex-1 bg-purple-100 rounded-2xl p-3 items-center border border-purple-200 shadow-sm"
+              activeOpacity={0.8}
+            >
+              <View style={styles.quickActionIconPurple} className="w-10 h-10 rounded-full bg-purple-200/80 items-center justify-center mb-2">
+                <Smile size={22} color="#7C3AED" />
+              </View>
+              <Text style={styles.quickActionTitlePurple} className="text-xs font-bold text-purple-900 text-center" numberOfLines={2}>
+                Cadastro dos Filhos
+              </Text>
+              <Text style={[styles.quickActionSubtitle, { color: '#9333EA' }]} className="text-[10px] text-purple-700 text-center mt-0.5">
+                Cadastre aqui
+              </Text>
+            </TouchableOpacity>
+
+            {/* Botão 2: Eventos */}
+            <TouchableOpacity
+              onPress={() => router.push('/eventos')}
+              style={styles.quickActionCardGreen}
+              className="flex-1 bg-green-100 rounded-2xl p-3 items-center border border-green-200 shadow-sm"
+              activeOpacity={0.8}
+            >
+              <View style={styles.quickActionIconGreen} className="w-10 h-10 rounded-full bg-green-200/80 items-center justify-center mb-2">
+                <Calendar size={22} color="#059669" />
+              </View>
+              <Text style={styles.quickActionTitleGreen} className="text-xs font-bold text-green-900 text-center" numberOfLines={1}>
+                Eventos
+              </Text>
+              <Text style={[styles.quickActionSubtitle, { color: '#16A34A' }]} className="text-[10px] text-green-700 text-center mt-0.5">
+                Cultos & Festas
+              </Text>
+            </TouchableOpacity>
+
+            {/* Botão 3: Recursos */}
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  'Recursos Kids',
+                  'Em breve: Livros, materiais didáticos, histórias bíblicas e cartilhas para apoiar a sua família! 📖'
+                )
+              }
+              style={styles.quickActionCardBlue}
+              className="flex-1 bg-blue-100 rounded-2xl p-3 items-center border border-blue-200 shadow-sm"
+              activeOpacity={0.8}
+            >
+              <View style={styles.quickActionIconBlue} className="w-10 h-10 rounded-full bg-blue-200/80 items-center justify-center mb-2">
+                <BookOpen size={22} color="#2563EB" />
+              </View>
+              <Text style={styles.quickActionTitleBlue} className="text-xs font-bold text-blue-900 text-center" numberOfLines={1}>
+                Recursos
+              </Text>
+              <Text style={[styles.quickActionSubtitle, { color: '#2563EB' }]} className="text-[10px] text-blue-700 text-center mt-0.5">
+                Apoio & Aulas
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ─── 5. Seção Meus Filhos ──────────────────────────────────────────── */}
+          <View style={styles.meusFilhosHeader} className="flex-row justify-between items-center mt-6 mb-4">
+            <View style={styles.meusFilhosTitleRow} className="flex-row items-center">
+              <View style={styles.meusFilhosIconBubble} className="w-9 h-9 rounded-full bg-slate-100 items-center justify-center mr-2.5">
+                <Users size={19} color="#0F172A" />
+              </View>
+              <Text style={styles.meusFilhosTitle} className="text-xl font-extrabold text-slate-900">
+                Meus Filhos
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={abrirModal}
+              style={styles.botaoAdicionarFilho}
+              className="bg-pink-500 px-4 py-2.5 rounded-full shadow-md shadow-pink-500/30 flex-row items-center"
+              activeOpacity={0.85}
+            >
+              <Plus size={16} color="#FFFFFF" strokeWidth={3} />
+              <Text style={styles.botaoAdicionarFilhoText} className="text-white text-xs font-bold ml-1.5">
+                + Adicionar Filho
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ─── Lista de Crianças ──────────────────────────────────────────────── */}
+          {loading ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+              <Text style={styles.loadingText}>Carregando crianças cadastradas...</Text>
+            </View>
+          ) : (
+            <View style={styles.listContent}>
+              {criancas.length === 0 ? (
+                /* Empty State */
+                <View style={styles.emptyCard}>
+                  <View style={styles.emptyIconCircle}>
+                    <Baby size={42} color="#3B82F6" />
+                  </View>
+                  <Text style={styles.emptyTitle}>Nenhuma criança cadastrada ainda</Text>
+                  <Text style={styles.emptyText}>
+                    Cadastre seus pequenos para que nossos tios e tias voluntários tenham todas
+                    as informações necessárias para cuidar com muito amor e segurança!
+                  </Text>
+                  <TouchableOpacity
+                    onPress={abrirModal}
+                    style={styles.emptyActionButton}
+                    activeOpacity={0.85}
+                  >
+                    <Plus size={18} color="#FFFFFF" />
+                    <Text style={styles.emptyActionButtonText}>Cadastrar Meu Filho(a) Agora</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                criancas.map((crianca, idx) => {
+                  const idade = calcularIdade(crianca.dataNascimento);
+                  const temInclusao = !!crianca.fichaInclusao;
+                  const expandido = expandidoId === crianca.id;
+
+                  // Cores dinâmicas para avatar
+                  const coresAvatar = [
+                    ['#FDE68A', '#F59E0B'],
+                    ['#BAE6FD', '#0284C7'],
+                    ['#FBCFE8', '#DB2777'],
+                    ['#DDD6FE', '#7C3AED'],
+                    ['#A7F3D0', '#059669'],
+                  ];
+                  const cor = coresAvatar[idx % coresAvatar.length];
+
+                  return (
+                    <View key={crianca.id} style={styles.kidCard}>
+                      {/* Linha Principal do Card */}
+                      <View style={styles.kidCardHeader}>
+                        {/* Avatar Lúdico */}
+                        <LinearGradient
+                          colors={cor as [string, string]}
+                          style={styles.avatarCircle}
+                        >
+                          <Text style={styles.avatarInitials}>
+                            {crianca.nome.charAt(0).toUpperCase()}
                           </Text>
+                        </LinearGradient>
+
+                        {/* Dados Básicos */}
+                        <View style={styles.kidInfoCol}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Text style={styles.kidName}>{crianca.nome}</Text>
+                            {temInclusao && (
+                              <View style={styles.specialBadge}>
+                                <Text style={styles.specialBadgeText}>💛 Atenção Especial</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          <View style={styles.kidMetaRow}>
+                            {idade ? (
+                              <View style={styles.kidMetaItem}>
+                                <Smile size={13} color="#64748B" />
+                                <Text style={styles.kidMetaText}>{idade}</Text>
+                              </View>
+                            ) : null}
+
+                            <View style={styles.kidMetaItem}>
+                              <Calendar size={13} color="#64748B" />
+                              <Text style={styles.kidMetaText}>{crianca.dataNascimento}</Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.kidMetaRow}>
+                            <View style={styles.kidMetaItem}>
+                              <Phone size={13} color="#64748B" />
+                              <Text style={styles.kidMetaText}>
+                                Emergência: {crianca.telefoneEmergencia}
+                              </Text>
+                            </View>
+                          </View>
                         </View>
-                        <Text style={styles.inclusaoExpandText}>
-                          {expandido ? 'Ocultar Detalhes ▲' : 'Ver Detalhes ▼'}
-                        </Text>
-                      </TouchableOpacity>
 
-                      {expandido && (
-                        <View style={styles.inclusaoContent}>
-                          {crianca.fichaInclusao.condicao ? (
-                            <View style={styles.inclusaoField}>
-                              <Text style={styles.inclusaoLabel}>Condição / Laudo:</Text>
-                              <Text style={styles.inclusaoValue}>
-                                {crianca.fichaInclusao.condicao}
+                        {/* Botão de Excluir */}
+                        <TouchableOpacity
+                          onPress={() => confirmarExclusao(crianca)}
+                          style={styles.deleteButton}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <Trash2 size={16} color="#94A3B8" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Detalhes de Inclusão (Expansível ou Exibido) */}
+                      {temInclusao && crianca.fichaInclusao && (
+                        <View style={styles.inclusaoBox}>
+                          <TouchableOpacity
+                            onPress={() =>
+                              setExpandidoId(expandido ? null : crianca.id)
+                            }
+                            style={styles.inclusaoToggleHeader}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.inclusaoIconTitle}>
+                              <Heart size={16} color="#D97706" fill="#FDE68A" />
+                              <Text style={styles.inclusaoBoxTitle}>
+                                Ficha de Inclusão Ativa
                               </Text>
                             </View>
-                          ) : null}
+                            <Text style={styles.inclusaoExpandText}>
+                              {expandido ? 'Ocultar Detalhes ▲' : 'Ver Detalhes ▼'}
+                            </Text>
+                          </TouchableOpacity>
 
-                          {crianca.fichaInclusao.alergias ? (
-                            <View style={styles.inclusaoField}>
-                              <Text style={styles.inclusaoLabel}>Alergias ou Restrições:</Text>
-                              <Text style={styles.inclusaoValue}>
-                                {crianca.fichaInclusao.alergias}
-                              </Text>
-                            </View>
-                          ) : null}
+                          {expandido && (
+                            <View style={styles.inclusaoContent}>
+                              {crianca.fichaInclusao.condicao ? (
+                                <View style={styles.inclusaoField}>
+                                  <Text style={styles.inclusaoLabel}>Condição / Laudo:</Text>
+                                  <Text style={styles.inclusaoValue}>
+                                    {crianca.fichaInclusao.condicao}
+                                  </Text>
+                                </View>
+                              ) : null}
 
-                          {crianca.fichaInclusao.gatilhos ? (
-                            <View style={styles.inclusaoField}>
-                              <Text style={styles.inclusaoLabel}>Gatilhos de Desconforto:</Text>
-                              <Text style={styles.inclusaoValue}>
-                                {crianca.fichaInclusao.gatilhos}
-                              </Text>
-                            </View>
-                          ) : null}
+                              {crianca.fichaInclusao.alergias ? (
+                                <View style={styles.inclusaoField}>
+                                  <Text style={styles.inclusaoLabel}>Alergias ou Restrições:</Text>
+                                  <Text style={styles.inclusaoValue}>
+                                    {crianca.fichaInclusao.alergias}
+                                  </Text>
+                                </View>
+                              ) : null}
 
-                          {crianca.fichaInclusao.comoAcalmar ? (
-                            <View style={styles.inclusaoField}>
-                              <Text style={styles.inclusaoLabel}>Como Ajudar a Acalmar:</Text>
-                              <Text style={styles.inclusaoValue}>
-                                {crianca.fichaInclusao.comoAcalmar}
-                              </Text>
+                              {crianca.fichaInclusao.gatilhos ? (
+                                <View style={styles.inclusaoField}>
+                                  <Text style={styles.inclusaoLabel}>Gatilhos de Desconforto:</Text>
+                                  <Text style={styles.inclusaoValue}>
+                                    {crianca.fichaInclusao.gatilhos}
+                                  </Text>
+                                </View>
+                              ) : null}
+
+                              {crianca.fichaInclusao.comoAcalmar ? (
+                                <View style={styles.inclusaoField}>
+                                  <Text style={styles.inclusaoLabel}>Como Ajudar a Acalmar:</Text>
+                                  <Text style={styles.inclusaoValue}>
+                                    {crianca.fichaInclusao.comoAcalmar}
+                                  </Text>
+                                </View>
+                              ) : null}
                             </View>
-                          ) : null}
+                          )}
                         </View>
                       )}
                     </View>
-                  )}
-                </View>
-              );
-            })
+                  );
+                })
+              )}
+            </View>
           )}
-        </ScrollView>
-      )}
+        </View>
+      </ScrollView>
 
       {/* ─── Modal de Cadastro com Ficha de Inclusão Dinâmica ────────────── */}
       <Modal
@@ -825,35 +988,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  headerContainer: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
+  pageScroll: {
+    flex: 1,
   },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+  pageScrollContent: {
+    flexGrow: 1,
   },
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#FFFFFF',
+  // ─── 1. Topo Visível (Sem Cortes) ─────────────────────────────────────────
+  topoContainer: {
+    position: 'relative',
+    width: '100%',
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
   },
-  headerBadge: {
+  topoKidsImage: {
+    width: '100%',
+    height: 240,
+  },
+  backButtonCircle: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroPillButton: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEF3C7',
@@ -862,142 +1029,355 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#FDE68A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  headerBadgeText: {
-    color: '#B45309',
+  heroPillText: {
+    color: '#78350F',
     fontSize: 12,
     fontWeight: '700',
-    marginLeft: 4,
   },
-  headerContent: {
-    marginBottom: 16,
+
+  // ─── 2. Container de Conteúdo & Card Azul de Resumo ───────────────────────
+  contentContainer: {
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingBottom: 24,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  blueCardWrapper: {
+    width: '100%',
+    marginTop: 8,
+    zIndex: 20,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.5,
-  },
-  headerIconBubble: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FEF3C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  bannerCard: {
+  blueCard: {
     borderRadius: 24,
-    padding: 16,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 5,
+    padding: 18,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 6,
   },
-  bannerInfo: {
+  blueCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 14,
   },
-  bannerIconCircle: {
+  blueCardIconCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  bannerTitle: {
+  blueCardTitle: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 2,
   },
-  bannerDesc: {
-    color: '#E0E7FF',
-    fontSize: 12,
-    lineHeight: 16,
+  blueCardDesc: {
+    color: '#DBEAFE',
+    fontSize: 11.5,
+    lineHeight: 15,
   },
-  bannerMetricsRow: {
+  blueCardMetricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 16,
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  metricItem: {
+  blueCardMetricColLeft: {
+    flex: 1,
+    alignItems: 'center',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(147, 197, 253, 0.4)',
+  },
+  blueCardMetricColRight: {
     flex: 1,
     alignItems: 'center',
   },
-  metricDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  metricNumber: {
+  blueMetricNumber: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
   },
-  metricLabel: {
-    color: '#E0E7FF',
+  blueMetricLabel: {
+    color: '#DBEAFE',
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 2,
   },
-  actionRowContainer: {
+
+  // ─── 3. Avisos e Novidades ──────────────────────────────────────────────
+  avisosContainer: {
+    marginTop: 16,
+    width: '100%',
+    padding: 16,
+    backgroundColor: '#FEFCE8',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#FEF08A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  avisosHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  avisosHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginLeft: 8,
+  },
+  verTodosButton: {
+    backgroundColor: '#FDE047',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  verTodosButtonText: {
+    color: '#78350F',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  avisosScrollContent: {
+    paddingRight: 8,
+    paddingVertical: 2,
+  },
+  avisoCard: {
+    width: 270,
+    marginRight: 12,
+    backgroundColor: '#FFFDF7',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  avisoCardEmpty: {
+    backgroundColor: '#FFFDF7',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avisoCardEmptyText: {
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '500',
+  },
+  avisoTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  avisoTagText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  avisoTitulo: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  avisoMensagem: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 17,
+  },
+
+  // ─── 4. Menu de Ações Rápidas ───────────────────────────────────────────
+  quickActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 16,
+    gap: 10,
+  },
+  quickActionCardPurple: {
+    flex: 1,
+    backgroundColor: '#F3E8FF',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+    shadowColor: '#A855F7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  quickActionIconPurple: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(233, 213, 255, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickActionTitlePurple: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#581C87',
+    textAlign: 'center',
+  },
+  quickActionCardGreen: {
+    flex: 1,
+    backgroundColor: '#DCFCE7',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  quickActionIconGreen: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(187, 247, 208, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickActionTitleGreen: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#14532D',
+    textAlign: 'center',
+  },
+  quickActionCardBlue: {
+    flex: 1,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  quickActionIconBlue: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(191, 219, 254, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickActionTitleBlue: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#1E3A8A',
+    textAlign: 'center',
+  },
+  quickActionSubtitle: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    marginTop: 3,
+    textAlign: 'center',
+  },
+
+  // ─── 5. Seção Meus Filhos ───────────────────────────────────────────────
+  meusFilhosHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 12,
+    width: '100%',
+    marginTop: 24,
+    marginBottom: 14,
   },
-  sectionTitle: {
-    fontSize: 18,
+  meusFilhosTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  meusFilhosIconBubble: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  meusFilhosTitle: {
+    fontSize: 20,
     fontWeight: '800',
     color: '#0F172A',
+    letterSpacing: -0.3,
   },
-  addKidButton: {
-    borderRadius: 24,
-    overflow: 'hidden',
+  botaoAdicionarFilho: {
+    backgroundColor: '#EC4899',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
     shadowColor: '#EC4899',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  addKidGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  addKidButtonText: {
+  botaoAdicionarFilhoText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    marginLeft: 6,
+    fontSize: 12.5,
+    fontWeight: '800',
+    marginLeft: 5,
   },
   listContainer: {
     flex: 1,
   },
   listContent: {
-    paddingHorizontal: 20,
+    width: '100%',
+    paddingHorizontal: 0,
   },
   centerContainer: {
     flex: 1,
@@ -1370,4 +1750,5 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
+
 });
