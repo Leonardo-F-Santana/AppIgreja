@@ -934,49 +934,51 @@ export default function MinisterioKidsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Formulário */}
-            <form
-              onSubmit={handlePublicarAviso}
-              className="flex flex-col gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 lg:col-span-1 h-fit"
-            >
-              <div>
-                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1 block">Título</label>
-                <input
-                  id="aviso-kids-titulo"
-                  type="text"
-                  required
-                  value={novoAvisoTitulo}
-                  onChange={(e) => setNovoAvisoTitulo(e.target.value)}
-                  placeholder="Ex: Festa das Crianças"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1 block">Mensagem</label>
-                <textarea
-                  id="aviso-kids-mensagem"
-                  required
-                  rows={4}
-                  value={novoAvisoMensagem}
-                  onChange={(e) => setNovoAvisoMensagem(e.target.value)}
-                  placeholder="Escreva o aviso para os pais..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
-                />
-              </div>
-              <button
-                id="aviso-kids-publicar"
-                type="submit"
-                disabled={publicandoAviso || !novoAvisoTitulo.trim() || !novoAvisoMensagem.trim()}
-                className="py-2.5 px-4 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            {/* Coluna do Formulário (Esquerda - 1/3) */}
+            <div className="w-full lg:w-1/3 flex-shrink-0">
+              <form
+                onSubmit={handlePublicarAviso}
+                className="flex flex-col gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 h-fit"
               >
-                {publicandoAviso ? <Spinner /> : <Send size={14} />}
-                Publicar Aviso
-              </button>
-            </form>
+                <div>
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1 block">Título</label>
+                  <input
+                    id="aviso-kids-titulo"
+                    type="text"
+                    required
+                    value={novoAvisoTitulo}
+                    onChange={(e) => setNovoAvisoTitulo(e.target.value)}
+                    placeholder="Ex: Festa das Crianças"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1 block">Mensagem</label>
+                  <textarea
+                    id="aviso-kids-mensagem"
+                    required
+                    rows={4}
+                    value={novoAvisoMensagem}
+                    onChange={(e) => setNovoAvisoMensagem(e.target.value)}
+                    placeholder="Escreva o aviso para os pais..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                  />
+                </div>
+                <button
+                  id="aviso-kids-publicar"
+                  type="submit"
+                  disabled={publicandoAviso || !novoAvisoTitulo.trim() || !novoAvisoMensagem.trim()}
+                  className="py-2.5 px-4 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {publicandoAviso ? <Spinner /> : <Send size={14} />}
+                  Publicar Aviso
+                </button>
+              </form>
+            </div>
 
-            {/* Lista de Avisos */}
-            <div className="lg:col-span-2">
+            {/* Coluna da Lista de Avisos (Direita - 2/3 com Scroll) */}
+            <div className="w-full lg:w-2/3">
               {avisosKids.length === 0 ? (
                 <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-gray-200 p-6">
                   <Megaphone size={24} className="text-gray-300 mb-2" />
@@ -984,11 +986,11 @@ export default function MinisterioKidsPage() {
                   <p className="text-xs text-gray-400 mt-1">Use o formulário ao lado para publicar o primeiro aviso.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                   {avisosKids.map((aviso) => (
                     <div
                       key={aviso.id}
-                      className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex flex-col gap-2 shadow-sm"
+                      className="w-full bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex flex-col gap-2 shadow-sm"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="text-sm font-bold text-yellow-900 leading-tight break-words">

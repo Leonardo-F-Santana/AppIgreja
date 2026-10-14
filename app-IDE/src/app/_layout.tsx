@@ -26,7 +26,7 @@ SplashScreen.preventAutoHideAsync();
 export default function TabLayout() {
   // Pré-carrega todas as fontes de ícones usadas no app para evitar
   // o erro "Unable to download asset" no ExpoAsset.downloadAsync
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     ...Feather.font,
     ...FontAwesome5.font,
     ...Ionicons.font,
@@ -42,17 +42,29 @@ export default function TabLayout() {
 
   const router = useRouter();
 
+  // Fallback de segurança: nunca deixa o app travado na splash por mais de 4s
   useEffect(() => {
-    if (!fontsLoaded) return;
+    const safetyTimer = setTimeout(() => {
+      setAppIsReady(true);
+    }, 4000);
+    return () => clearTimeout(safetyTimer);
+  }, []);
 
+  useEffect(() => {
+    if (!fontsLoaded && !fontError) return;
+
+    let isMounted = true;
     async function prepare() {
       try {
-        // Aguarda a verificação de autenticação e estado do AsyncStorage
+        // Aguarda a verificação de autenticação e estado do AsyncStorage com timeout de 3s
         await new Promise<void>((resolve) => {
+          const authTimer = setTimeout(() => resolve(), 3000);
+
           const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            clearTimeout(authTimer);
             unsubscribe(); // Só queremos checar uma vez no início
 
-            if (user) {
+            if (user && isMounted) {
               try {
                 const rememberMe = await AsyncStorage.getItem('@lembrar_me_status');
                 if (rememberMe === 'false') {
@@ -76,11 +88,17 @@ export default function TabLayout() {
       } catch (e) {
         console.warn(e);
       } finally {
-        setAppIsReady(true);
+        if (isMounted) {
+          setAppIsReady(true);
+        }
       }
     }
     prepare();
-  }, [fontsLoaded]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fontsLoaded, fontError, router]);
 
   useEffect(() => {
     if (appIsReady) {
@@ -166,6 +184,8 @@ export default function TabLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="home" />
         <Stack.Screen name="kids" />
+        <Stack.Screen name="AvisosKids" />
+        <Stack.Screen name="avisos-kids" />
       </Stack>
 
       {!animationComplete && (

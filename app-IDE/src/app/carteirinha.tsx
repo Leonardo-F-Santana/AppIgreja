@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { QrCode, ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../config/firebase';
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
@@ -14,6 +15,10 @@ export default function CarteirinhaScreen() {
   const [nome, setNome] = useState('Membro');
   const [role, setRole] = useState('MEMBRO');
   const [dataAdesao, setDataAdesao] = useState('Membro desde 2024');
+
+  const currentUser = auth.currentUser;
+  const shortId = currentUser?.uid ? currentUser.uid.substring(0, 6).toUpperCase() : '000000';
+  const qrCodeValue = currentUser?.uid || 'sem-id';
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -74,7 +79,9 @@ export default function CarteirinhaScreen() {
 
           <View style={styles.cardBottom}>
             <Text style={styles.roleText}>{role}</Text>
-            <Text style={styles.nameText} numberOfLines={1}>{nome}</Text>
+            <Text style={styles.nameText} numberOfLines={1}>
+              {nome} <Text style={styles.shortIdText} className="text-blue-300 text-sm font-normal">#{shortId}</Text>
+            </Text>
             <Text style={styles.dateText}>{dataAdesao}</Text>
           </View>
         </View>
@@ -83,7 +90,14 @@ export default function CarteirinhaScreen() {
         {!isLandscape && (
           <View style={styles.qrContainer}>
             <Text style={styles.qrText}>Apresente este código na entrada</Text>
-            <QrCode color="#000000" size={120} />
+            <View style={styles.qrWrapper} className="items-center justify-center p-4">
+              <QRCode
+                value={qrCodeValue}
+                size={160}
+                color="black"
+                backgroundColor="white"
+              />
+            </View>
           </View>
         )}
       </View>
@@ -142,7 +156,7 @@ const styles = StyleSheet.create({
   cardLandscape: {
     width: '100%',
     height: '100%',
-    maxWidth: 'none',
+    maxWidth: undefined,
     aspectRatio: undefined,
     borderRadius: 0,
     padding: 40, // Mais margem interna no landscape para não tocar nos cantos
@@ -200,6 +214,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
   },
+  shortIdText: {
+    color: '#93C5FD', // blue-300
+    fontSize: 14,
+    fontWeight: 'normal',
+  },
   dateText: {
     color: '#93C5FD', // blue-300
     fontSize: 12,
@@ -209,7 +228,7 @@ const styles = StyleSheet.create({
     maxWidth: 380,
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 30,
+    padding: 24,
     alignItems: 'center',
     marginTop: 40,
     shadowColor: '#000000',
@@ -218,11 +237,18 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
+  qrWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+  },
   qrText: {
     color: '#6B7280', // gray-500
     fontSize: 14,
     fontWeight: '500',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
 });

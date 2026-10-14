@@ -18,7 +18,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Sparkles,
@@ -126,8 +126,10 @@ function formatarTelefoneInput(texto: string): string {
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-export default function MinisterioKidsScreen() {
+export default function MinisterioKidsScreen({ navigation: navProp }: any = {}) {
   const router = useRouter();
+  const navHook = useNavigation<any>();
+  const navigation = navProp || navHook;
   const insets = useSafeAreaInsets();
 
   // Estados de dados
@@ -433,7 +435,7 @@ export default function MinisterioKidsScreen() {
               </View>
 
               <TouchableOpacity
-                onPress={() => router.push('/avisos')}
+                onPress={() => navigation.navigate('AvisosKids')}
                 style={styles.verTodosButton}
                 className="bg-yellow-200 px-3 py-1.5 rounded-full"
                 activeOpacity={0.7}
