@@ -8,7 +8,6 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import {
   ouvirMembros,
-  atualizarFuncaoMembro,
   adicionarMembroManual,
   editarMembroManual,
   deletarMembro,
@@ -85,7 +84,8 @@ function formatarTelefone(valor: string): string {
 
 // ─── Badge de Status ──────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS = ['Ativo', 'Inativo', 'Afastado', 'Líder', 'Discipulador'] as const;
+export type StatusMembro = 'Ativo' | 'Inativo' | 'Afastado';
+const STATUS_OPTIONS: readonly StatusMembro[] = ['Ativo', 'Inativo', 'Afastado'];
 
 function renderStatusBadge(status?: string) {
   const s = (status || 'Ativo').trim();
@@ -94,10 +94,10 @@ function renderStatusBadge(status?: string) {
   let colorClasses: string;
   if (lower === 'ativo') {
     colorClasses = 'bg-green-100 text-green-800 border-green-200';
-  } else if (lower === 'inativo' || lower === 'afastado') {
+  } else if (lower === 'inativo') {
     colorClasses = 'bg-red-100 text-red-800 border-red-200';
-  } else if (lower === 'líder' || lower === 'discipulador') {
-    colorClasses = 'bg-blue-100 text-blue-800 border-blue-200';
+  } else if (lower === 'afastado') {
+    colorClasses = 'bg-amber-100 text-amber-800 border-amber-200';
   } else {
     colorClasses = 'bg-gray-100 text-gray-800 border-gray-200';
   }
@@ -269,19 +269,6 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading, celulas
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className={labelClass}>Nível de Acesso</label>
-            <select
-              value={form.role}
-              onChange={(e) => set('role', e.target.value)}
-              required
-              className={inputClass}
-            >
-              <option value="membro">Membro</option>
-              <option value="admin">Administrador</option>
             </select>
           </div>
 
@@ -608,16 +595,6 @@ export default function MembrosPage() {
     }
   };
 
-  const handleAlterarRole = async (id: string, novaRole: string) => {
-    try {
-      closeMenu();
-      await atualizarFuncaoMembro(id, novaRole);
-      setToast({ mensagem: `Função atualizada para ${novaRole === 'admin' ? 'Administrador' : 'Membro'}.`, tipo: 'sucesso' });
-    } catch (error) {
-      setToast({ mensagem: 'Erro ao atualizar nível de acesso.', tipo: 'erro' });
-    }
-  };
-
   const handleResetPassword = async (membro: Membro) => {
     closeMenu();
     if (!membro.email) {
@@ -811,11 +788,9 @@ export default function MembrosPage() {
                 className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="todos">Todos os Status</option>
-                <option value="Ativo">Ativo</option>
-                <option value="Inativo">Inativo</option>
-                <option value="Afastado">Afastado</option>
-                <option value="Líder">Líder</option>
-                <option value="Discipulador">Discipulador</option>
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
               </select>
 
               <select
@@ -973,26 +948,6 @@ export default function MembrosPage() {
                                 <Pencil size={16} className="text-gray-400" />
                                 Editar Membro
                               </button>
-
-                              {isAdmin ? (
-                                <button
-                                  onClick={() => handleAlterarRole(membro.id, 'membro')}
-                                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                                >
-                                  <UserCheck size={16} className="text-blue-500" />
-                                  Tornar Membro
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleAlterarRole(membro.id, 'admin')}
-                                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                                >
-                                  <UserCog size={16} className="text-indigo-500" />
-                                  Tornar Administrador
-                                </button>
-                              )}
-
-                              <div className="mx-2 my-1 border-t border-gray-100"></div>
 
                               <button
                                 onClick={() => {
