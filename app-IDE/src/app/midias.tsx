@@ -84,7 +84,7 @@ export default function MidiasScreen() {
           style={[styles.socialButton, { backgroundColor: 'rgba(193, 53, 132, 0.15)', borderColor: '#C13584' }]}
           onPress={() => handleOpenLink('https://www.instagram.com/ministerioide.rj/')}
         >
-          <FontAwesome5 name="instagram" size={26} color="#C13584" />
+          <FontAwesome5 name="instagram" size={24} color="#C13584" />
           <Text style={[styles.socialText, { color: '#C13584' }]}>Instagram</Text>
         </TouchableOpacity>
 
@@ -92,7 +92,7 @@ export default function MidiasScreen() {
           style={[styles.socialButton, { backgroundColor: 'rgba(24, 119, 242, 0.15)', borderColor: '#1877F2' }]}
           onPress={() => handleOpenLink('https://www.facebook.com/ministerioiderj/')}
         >
-          <FontAwesome5 name="facebook" size={26} color="#1877F2" />
+          <FontAwesome5 name="facebook" size={24} color="#1877F2" />
           <Text style={[styles.socialText, { color: '#1877F2' }]}>Facebook</Text>
         </TouchableOpacity>
 
@@ -100,8 +100,16 @@ export default function MidiasScreen() {
           style={[styles.socialButton, { backgroundColor: 'rgba(255, 0, 0, 0.15)', borderColor: '#FF0000' }]}
           onPress={() => handleOpenLink('https://www.youtube.com/@MinisterioIDE_rj')}
         >
-          <FontAwesome5 name="youtube" size={26} color="#FF0000" />
+          <FontAwesome5 name="youtube" size={24} color="#FF0000" />
           <Text style={[styles.socialText, { color: '#FF0000' }]}>YouTube</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.socialButton, { backgroundColor: 'rgba(255, 255, 255, 0.12)', borderColor: 'rgba(255, 255, 255, 0.4)' }]}
+          onPress={() => handleOpenLink('https://www.tiktok.com/@ministerio.ide_?_r=1&_t=ZS-9AZn66nlx1I')}
+        >
+          <FontAwesome5 name="tiktok" size={24} color="#FFFFFF" />
+          <Text style={[styles.socialText, { color: '#FFFFFF' }]}>TikTok</Text>
         </TouchableOpacity>
       </View>
 
@@ -180,9 +188,9 @@ export default function MidiasScreen() {
 
       {/* Modal Lightbox */}
       <Modal animationType="fade" transparent={true} visible={!!imagemExpandida}>
-        <TouchableOpacity 
-          style={styles.modalRoot} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalRoot}
+          activeOpacity={1}
           onPress={() => setImagemExpandida(null)}
         >
           <SafeAreaView style={styles.modalSafeArea}>
@@ -264,14 +272,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
+    paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1.5,
-    marginHorizontal: 5,
+    marginHorizontal: 3.5,
   },
   socialText: {
-    marginTop: 8,
-    fontSize: 12,
+    marginTop: 6,
+    fontSize: 11,
     fontWeight: '700',
   },
   columnWrapper: {

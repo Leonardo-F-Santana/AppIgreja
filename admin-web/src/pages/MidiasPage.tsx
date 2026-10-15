@@ -13,6 +13,7 @@ import {
   type Album,
 } from '../services/albunsService';
 import GestaoTransmissaoCard from '../components/GestaoTransmissaoCard';
+import { FaInstagram, FaFacebookF, FaYoutube, FaTiktok } from 'react-icons/fa6';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -671,13 +672,55 @@ export default function MidiasPage() {
               Gerencie os álbuns de fotos da comunidade.
             </p>
           </div>
-          <button
-            onClick={() => setModal({ tipo: 'criar' })}
-            className="bg-blue-900 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2"
-          >
-            <Plus size={16} />
-            Novo Álbum
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Redes Sociais */}
+            <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-2xl border border-gray-100 shadow-sm">
+              <a
+                href="https://www.instagram.com/ministerioide.rj/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:bg-slate-100 p-2 rounded-full transition-colors text-pink-500"
+                title="Instagram"
+              >
+                <FaInstagram size={20} />
+              </a>
+              <a
+                href="https://www.facebook.com/ministerioiderj/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:bg-slate-100 p-2 rounded-full transition-colors text-blue-600"
+                title="Facebook"
+              >
+                <FaFacebookF size={20} />
+              </a>
+              <a
+                href="https://www.youtube.com/@MinisterioIDE_rj"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:bg-slate-100 p-2 rounded-full transition-colors text-red-600"
+                title="YouTube"
+              >
+                <FaYoutube size={20} />
+              </a>
+              <a
+                href="https://www.tiktok.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:bg-slate-100 p-2 rounded-full transition-colors text-black dark:text-white"
+                title="TikTok"
+              >
+                <FaTiktok size={20} />
+              </a>
+            </div>
+
+            <button
+              onClick={() => setModal({ tipo: 'criar' })}
+              className="bg-blue-900 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2"
+            >
+              <Plus size={16} />
+              Novo Álbum
+            </button>
+          </div>
         </header>
 
         {/* Gestão de Transmissão ao Vivo */}

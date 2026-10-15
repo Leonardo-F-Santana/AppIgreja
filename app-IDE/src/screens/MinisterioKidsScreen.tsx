@@ -534,12 +534,7 @@ export default function MinisterioKidsScreen({ navigation: navProp }: any = {}) 
 
             {/* Botão 3: Recursos */}
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert(
-                  'Recursos Kids',
-                  'Em breve: Livros, materiais didáticos, histórias bíblicas e cartilhas para apoiar a sua família! 📖'
-                )
-              }
+              onPress={() => navigation.navigate('AulasKids')}
               style={styles.quickActionCardBlue}
               className="flex-1 bg-blue-100 rounded-2xl p-3 items-center border border-blue-200 shadow-sm"
               activeOpacity={0.8}
@@ -548,10 +543,10 @@ export default function MinisterioKidsScreen({ navigation: navProp }: any = {}) 
                 <BookOpen size={22} color="#2563EB" />
               </View>
               <Text style={styles.quickActionTitleBlue} className="text-xs font-bold text-blue-900 text-center" numberOfLines={1}>
-                Recursos
+                Ensino Kids
               </Text>
               <Text style={[styles.quickActionSubtitle, { color: '#2563EB' }]} className="text-[10px] text-blue-700 text-center mt-0.5">
-                Apoio & Aulas
+                Para fazer em família
               </Text>
             </TouchableOpacity>
           </View>
