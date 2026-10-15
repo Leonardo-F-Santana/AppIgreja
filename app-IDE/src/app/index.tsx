@@ -68,12 +68,13 @@ export default function AuthScreen() {
     }
     
     setIsLoading(true);
-    try {
-      let finalEmail = loginIdentifier.trim().toLowerCase();
 
-      // Se não tem '@', assumimos que é um nome de usuário e resolvemos o e-mail
-      // pela coleção pública de lookup usernames/{usernameLogin} (a coleção 'users' é privada).
-      if (!finalEmail.includes('@')) {
+    let finalEmail = loginIdentifier.trim().toLowerCase();
+
+    // Se não tem '@', assumimos que é um nome de usuário e resolvemos o e-mail
+    // pela coleção pública de lookup usernames/{usernameLogin} (a coleção 'users' é privada).
+    if (!finalEmail.includes('@')) {
+      try {
         const emailEncontrado = await buscarEmailPorUsername(finalEmail);
 
         if (!emailEncontrado) {
@@ -83,28 +84,41 @@ export default function AuthScreen() {
         }
 
         finalEmail = emailEncontrado;
+      } catch (err) {
+        console.error('Erro ao buscar usuário:', err);
+        Alert.alert('Falha no Login', 'Não foi possível localizar o usuário.');
+        setIsLoading(false);
+        return;
       }
+    }
 
+    // Isola exclusivamente a promise de autenticação do Firebase
+    try {
       await signInWithEmailAndPassword(auth, finalEmail, password);
-      
-      try {
-        await AsyncStorage.setItem('@lembrar_me_status', rememberMe ? 'true' : 'false');
-      } catch (e) {
-        console.error('Erro ao guardar preferencia de sessao', e);
-      }
-      
-      router.replace('/home');
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro ao fazer login.';
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      if (
+        error.code === 'auth/invalid-credential' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/user-not-found'
+      ) {
         errorMessage = 'Credenciais incorretas.';
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'O identificador fornecido é inválido.';
       }
       Alert.alert('Falha no Login', errorMessage);
-    } finally {
       setIsLoading(false);
+      return;
     }
+
+    try {
+      await AsyncStorage.setItem('@lembrar_me_status', rememberMe ? 'true' : 'false');
+    } catch (e) {
+      console.error('Erro ao guardar preferencia de sessao', e);
+    }
+
+    setIsLoading(false);
+    router.replace('/home');
   };
 
   const handleRecuperarSenha = async () => {

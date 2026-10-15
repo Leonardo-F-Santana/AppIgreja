@@ -16,12 +16,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services that will likely be used
-import { initializeAuth } from "firebase/auth";
+// @ts-ignore
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const auth = initializeAuth(app, {
-  // @ts-ignore: ignora erro de tipagem ausente do getReactNativePersistence na v12
-  persistence: require('firebase/auth').getReactNativePersistence(AsyncStorage)
+  persistence: getReactNativePersistence(AsyncStorage),
 });
 export const db = getFirestore(app);
 
