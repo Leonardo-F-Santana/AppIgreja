@@ -5,7 +5,8 @@ import {
   UserX, UserMinus, KeyRound
 } from 'lucide-react';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import {
   ouvirMembros,
   adicionarMembroManual,
@@ -16,6 +17,7 @@ import {
   type RegistroHistorico,
 } from '../services/membrosService';
 import { ouvirCelulas, type Celula } from '../services/celulasService';
+import { ouvirKids } from '../services/kidsService';
 import { exportToCSV } from '../utils/exportCSV';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
@@ -82,6 +84,40 @@ function formatarTelefone(valor: string): string {
   return num;
 }
 
+function calcularIdade(dataNascStr?: string): string {
+  if (!dataNascStr) return '';
+  try {
+    const hoje = new Date();
+    let ano = 0, mes = 0, dia = 0;
+    if (dataNascStr.includes('/')) {
+      const partes = dataNascStr.split('/').map(Number);
+      dia = partes[0];
+      mes = partes[1];
+      ano = partes[2];
+    } else if (dataNascStr.includes('-')) {
+      const partes = dataNascStr.split('-').map(Number);
+      ano = partes[0];
+      mes = partes[1];
+      dia = partes[2];
+    }
+    if (!ano || !mes || !dia) return '';
+
+    let anos = hoje.getFullYear() - ano;
+    let meses = hoje.getMonth() + 1 - mes;
+    if (hoje.getDate() < dia) meses--;
+    if (meses < 0) {
+      anos--;
+      meses += 12;
+    }
+    if (anos <= 0) {
+      return `${Math.max(0, meses)} ${meses === 1 ? 'mês' : 'meses'}`;
+    }
+    return `${anos} ${anos === 1 ? 'ano' : 'anos'}`;
+  } catch {
+    return '';
+  }
+}
+
 // ─── Badge de Status ──────────────────────────────────────────────────────────────
 
 export type StatusMembro = 'Ativo' | 'Inativo' | 'Afastado';
@@ -127,6 +163,7 @@ interface ModalFormProps {
   onSalvar: (form: FormMembro) => Promise<void>;
   isLoading: boolean;
   celulasList: Celula[];
+  membroId?: string;
 }
 
 const FORM_VAZIO: FormMembro = {
@@ -140,8 +177,43 @@ const FORM_VAZIO: FormMembro = {
   status: 'Ativo',
 };
 
-function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading, celulasList }: ModalFormProps) {
+function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading, celulasList, membroId }: ModalFormProps) {
   const [form, setForm] = useState<FormMembro>(inicial ?? { ...FORM_VAZIO });
+  const [filhosMembro, setFilhosMembro] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!membroId) {
+      setFilhosMembro([]);
+      return;
+    }
+
+    const buscarFilhos = async () => {
+      try {
+        const q = query(
+          collection(db, 'kids'),
+          where('membroIdResponsavel', '==', membroId)
+        );
+        const snap = await getDocs(q);
+        let docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Fallback caso algum registro legado utilize responsavelId
+        if (docs.length === 0) {
+          const qFallback = query(
+            collection(db, 'kids'),
+            where('responsavelId', '==', membroId)
+          );
+          const snapFallback = await getDocs(qFallback);
+          docs = snapFallback.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        setFilhosMembro(docs);
+      } catch (error) {
+        console.error('Erro ao buscar filhos do membro:', error);
+      }
+    };
+
+    buscarFilhos();
+  }, [membroId]);
 
   const set = <K extends keyof FormMembro>(key: K, value: FormMembro[K]) =>
     setForm(f => ({ ...f, [key]: value }));
@@ -271,6 +343,44 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading, celulas
               ))}
             </select>
           </div>
+
+          {/* Seção de Filhos (Ministério Kids) */}
+          {membroId && (
+            <div>
+              <hr className="my-6 border-gray-200" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">Filhos (Ministério Kids)</h3>
+              {filhosMembro.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">Nenhum filho cadastrado no Ministério Kids.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {filhosMembro.map((filho) => {
+                    const idade = calcularIdade(filho.dataNascimento);
+                    const temAtencaoEspecial = filho.atencaoEspecial === true || !!filho.fichaInclusao;
+                    return (
+                      <div
+                        key={filho.id}
+                        className="bg-slate-50 border rounded-lg p-3 mb-2 flex justify-between items-center"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-800 text-sm">{filho.nome}</span>
+                          {temAtencaoEspecial && (
+                            <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                              💛 Atenção Especial
+                            </span>
+                          )}
+                        </div>
+                        {idade && (
+                          <span className="text-xs text-gray-500 font-medium">
+                            {idade}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2 flex-shrink-0 mt-2">
             <button
@@ -514,6 +624,22 @@ export default function MembrosPage() {
     return () => unsubscribe();
   }, []);
 
+  const [kidsCountMap, setKidsCountMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const unsubscribe = ouvirKids((kids) => {
+      const mapa: Record<string, number> = {};
+      kids.forEach((k) => {
+        const respId = k.membroIdResponsavel || (k as any).responsavelId;
+        if (respId) {
+          mapa[respId] = (mapa[respId] || 0) + 1;
+        }
+      });
+      setKidsCountMap(mapa);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const membrosFiltrados = useMemo(() => {
     return membros.filter((m) => {
       const matchBusca = m.username.toLowerCase().includes(busca.toLowerCase()) || 
@@ -637,6 +763,7 @@ export default function MembrosPage() {
       {modal.tipo === 'editar' && (
         <ModalForm
           tituloModal="Editar Membro"
+          membroId={modal.membro.id}
           inicial={{
             username: modal.membro.username,
             email: modal.membro.email,
@@ -860,6 +987,8 @@ export default function MembrosPage() {
                 {membrosPaginados.map((membro) => {
                   const isAdmin = membro.role === 'admin';
                   const isMenuOpen = menuAbertoId === membro.id;
+                  const quantidadeFilhos = (membro as any).kidsCount ?? (membro as any).filhos?.length ?? (membro as any).filhosIds?.length ?? (kidsCountMap[membro.id] || (membro.uid ? kidsCountMap[membro.uid] : 0) || 0);
+                  const temFilhos = quantidadeFilhos > 0;
                   return (
                     <tr key={membro.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -870,6 +999,11 @@ export default function MembrosPage() {
                           <div className="flex flex-col">
                             <span className="text-sm font-medium text-gray-900">{membro.username}</span>
                             <span className="text-sm text-gray-500">{membro.email || '-'}</span>
+                            {temFilhos && (
+                              <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-50 text-yellow-700 text-xs font-medium border border-yellow-100 self-start">
+                                🧸 {quantidadeFilhos > 0 ? `${quantidadeFilhos} ${quantidadeFilhos === 1 ? 'Filho' : 'Filhos'}` : 'Ministério Kids'}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>

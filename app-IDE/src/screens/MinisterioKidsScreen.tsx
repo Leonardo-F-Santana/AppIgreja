@@ -566,18 +566,6 @@ export default function MinisterioKidsScreen({ navigation: navProp }: any = {}) 
                 Meus Filhos
               </Text>
             </View>
-
-            <TouchableOpacity
-              onPress={abrirModal}
-              style={styles.botaoAdicionarFilho}
-              className="bg-pink-500 px-4 py-2.5 rounded-full shadow-md shadow-pink-500/30 flex-row items-center"
-              activeOpacity={0.85}
-            >
-              <Plus size={16} color="#FFFFFF" strokeWidth={3} />
-              <Text style={styles.botaoAdicionarFilhoText} className="text-white text-xs font-bold ml-1.5">
-                + Adicionar Filho
-              </Text>
-            </TouchableOpacity>
           </View>
 
           {/* ─── Lista de Crianças ──────────────────────────────────────────────── */}
@@ -852,11 +840,11 @@ export default function MinisterioKidsScreen({ navigation: navProp }: any = {}) 
                 <View style={styles.switchHeaderRow}>
                   <View style={{ flex: 1, paddingRight: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <Text style={styles.switchTitle}>Atenção Especial / Inclusão</Text>
-                      <Text style={{ fontSize: 16, marginLeft: 4 }}>💛</Text>
+                      <Text style={styles.switchTitle}>Ativar Ficha de Inclusão (Atenção especial / Neurodivergência )</Text>
+                      <Text style={{ fontSize: 16, marginLeft: 0 }}>💛</Text>
                     </View>
                     <Text style={styles.switchDesc}>
-                      Meu filho(a) precisa de atenção especial? (Autismo, TDAH, Alergias, etc.)
+                      Por favor, marque caso seu filho(a) tenha alguma deficiência, trnastorno do neurodesenvolvimento (como Autismo ou TDAH) ou alergia.
                     </Text>
                   </View>
                   <Switch
