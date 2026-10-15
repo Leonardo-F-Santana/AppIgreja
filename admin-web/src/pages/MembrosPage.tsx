@@ -206,6 +206,26 @@ function ModalForm({ tituloModal, inicial, onClose, onSalvar, isLoading, celulas
           docs = snapFallback.docs.map(d => ({ id: d.id, ...d.data() }));
         }
 
+        // Fallback por nome do responsável caso não tenha vinculado o ID
+        if (docs.length === 0 && form.username) {
+          const qNome = query(
+            collection(db, 'kids'),
+            where('nomeResponsavel', '==', form.username.trim())
+          );
+          const snapNome = await getDocs(qNome);
+          docs = snapNome.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        // Fallback por telefone de emergência
+        if (docs.length === 0 && form.telefone) {
+          const qTel = query(
+            collection(db, 'kids'),
+            where('telefoneEmergencia', '==', form.telefone.trim())
+          );
+          const snapTel = await getDocs(qTel);
+          docs = snapTel.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
         setFilhosMembro(docs);
       } catch (error) {
         console.error('Erro ao buscar filhos do membro:', error);
@@ -634,6 +654,16 @@ export default function MembrosPage() {
         if (respId) {
           mapa[respId] = (mapa[respId] || 0) + 1;
         }
+        if (k.nomeResponsavel?.trim()) {
+          const nomeKey = `nome:${k.nomeResponsavel.trim().toLowerCase()}`;
+          mapa[nomeKey] = (mapa[nomeKey] || 0) + 1;
+        }
+        if (k.telefoneEmergencia?.trim()) {
+          const telKey = `tel:${k.telefoneEmergencia.replace(/\D/g, '')}`;
+          if (telKey.length >= 8) {
+            mapa[telKey] = (mapa[telKey] || 0) + 1;
+          }
+        }
       });
       setKidsCountMap(mapa);
     });
@@ -987,7 +1017,15 @@ export default function MembrosPage() {
                 {membrosPaginados.map((membro) => {
                   const isAdmin = membro.role === 'admin';
                   const isMenuOpen = menuAbertoId === membro.id;
-                  const quantidadeFilhos = (membro as any).kidsCount ?? (membro as any).filhos?.length ?? (membro as any).filhosIds?.length ?? (kidsCountMap[membro.id] || (membro.uid ? kidsCountMap[membro.uid] : 0) || 0);
+                  const quantidadeFilhos =
+                    (membro as any).kidsCount ??
+                    (membro as any).filhos?.length ??
+                    (membro as any).filhosIds?.length ??
+                    (kidsCountMap[membro.id] ||
+                      (membro.uid ? kidsCountMap[membro.uid] : 0) ||
+                      (membro.username ? kidsCountMap[`nome:${membro.username.trim().toLowerCase()}`] : 0) ||
+                      (membro.telefone ? kidsCountMap[`tel:${membro.telefone.replace(/\D/g, '')}`] : 0) ||
+                      0);
                   const temFilhos = quantidadeFilhos > 0;
                   return (
                     <tr key={membro.id} className="hover:bg-gray-50 transition-colors">

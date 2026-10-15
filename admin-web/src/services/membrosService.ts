@@ -155,6 +155,7 @@ export function ouvirMembros(
         const data = docSnap.data();
         return {
           id: docSnap.id,
+          uid: data.uid || docSnap.id,
           username: data.username ?? "Sem Nome",
           email: data.email ?? "sem-email@ide.com",
           role: data.role ?? "membro", // Se não tiver role, assume 'membro'
@@ -180,6 +181,7 @@ export function ouvirMembros(
             const data = d.data();
             return {
               id: d.id,
+              uid: data.uid || d.id,
               username: data.username ?? "Sem Nome",
               email: data.email ?? "sem-email@ide.com",
               role: data.role ?? "membro",

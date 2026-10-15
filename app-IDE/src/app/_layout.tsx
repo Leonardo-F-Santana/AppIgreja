@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -42,53 +42,52 @@ export default function TabLayout() {
 
   const router = useRouter();
 
-  // Fallback de segurança: nunca deixa o app travado na splash por mais de 4s
+  // Fallback de segurança: nunca deixa o app travado na splash por mais de 8s
+  // (ex.: fontes que nunca carregam). A verificação de sessão continua em
+  // segundo plano mesmo que este fallback dispare.
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
       setAppIsReady(true);
-    }, 4000);
+    }, 8000);
     return () => clearTimeout(safetyTimer);
   }, []);
 
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
 
-    let isMounted = true;
+    let cancelled = false;
     async function prepare() {
       try {
-        // Aguarda a verificação de autenticação e estado do AsyncStorage com timeout de 3s
-        await new Promise<void>((resolve) => {
-          const authTimer = setTimeout(() => resolve(), 3000);
+        // Aguarda o Firebase restaurar a sessão persistida no AsyncStorage.
+        // IMPORTANTE: não usar timeout curto aqui. Ao abrir o app após algum tempo
+        // fechado, o Firebase precisa renovar o token pela rede antes de confirmar
+        // o utilizador, o que pode levar vários segundos em redes móveis.
+        await auth.authStateReady();
+        if (cancelled) return;
 
-          const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            clearTimeout(authTimer);
-            unsubscribe(); // Só queremos checar uma vez no início
-
-            if (user && isMounted) {
-              try {
-                const rememberMe = await AsyncStorage.getItem('@lembrar_me_status');
-                if (rememberMe === 'false') {
-                  // O utilizador escolheu não ser lembrado
-                  await signOut(auth);
-                  // Continua na tela de login
-                } else {
-                  // O utilizador escolheu ser lembrado (ou é undefined)
-                  router.replace('/home');
-                }
-              } catch (e) {
-                console.warn('Erro ao ler AsyncStorage', e);
-              }
+        const user = auth.currentUser;
+        if (user) {
+          try {
+            const rememberMe = await AsyncStorage.getItem('@lembrar_me_status');
+            if (rememberMe === 'false') {
+              // O utilizador escolheu não ser lembrado
+              await signOut(auth);
+              // Continua na tela de login
+            } else {
+              // O utilizador escolheu ser lembrado (ou é undefined)
+              router.replace('/home');
             }
-            resolve();
-          });
-        });
-        
+          } catch (e) {
+            console.warn('Erro ao ler AsyncStorage', e);
+          }
+        }
+
         // Pequeno atraso extra para garantir uma transição suave da Splash
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (e) {
         console.warn(e);
       } finally {
-        if (isMounted) {
+        if (!cancelled) {
           setAppIsReady(true);
         }
       }
@@ -96,7 +95,7 @@ export default function TabLayout() {
     prepare();
 
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
   }, [fontsLoaded, fontError, router]);
 
