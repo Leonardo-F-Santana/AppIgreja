@@ -395,26 +395,38 @@ export default function HomeScreen() {
 
   // ─── Firestore: Transmissão ao Vivo ─────────────────────────────────────────
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      doc(db, 'configuracoes', 'transmissao'),
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setTransmissaoAtual({
-            aoVivo: Boolean(data?.aoVivo),
-            linkYoutube: data?.linkYoutube || '',
-            titulo: data?.titulo || '',
-          });
-        } else {
-          setTransmissaoAtual(null);
-        }
-      },
-      (error) => {
-        console.error('Erro ao escutar transmissão ao vivo:', error);
+    let unsubscribe: any = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        if (unsubscribe) unsubscribe();
+        setTransmissaoAtual(null);
+        return;
       }
-    );
 
-    return () => unsubscribe();
+      unsubscribe = onSnapshot(
+        doc(db, 'configuracoes', 'transmissao'),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setTransmissaoAtual({
+              aoVivo: Boolean(data?.aoVivo),
+              linkYoutube: data?.linkYoutube || '',
+              titulo: data?.titulo || '',
+            });
+          } else {
+            setTransmissaoAtual(null);
+          }
+        },
+        (error) => {
+          console.error('Erro ao escutar transmissão ao vivo:', error);
+        }
+      );
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // ─── Renderização de Ícones ───────────────────────────────────────────────

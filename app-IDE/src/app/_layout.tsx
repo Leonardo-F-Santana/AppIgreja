@@ -1,8 +1,8 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
-import { signOut } from 'firebase/auth';
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
+import { signOut, User } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -13,19 +13,16 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from '@expo/vector-icons';
+import CustomSplashScreen from '../screens/SplashScreen';
 
 // Importa o módulo de push notifications para que o handler e o canal Android
 // sejam configurados o mais cedo possível na inicialização do app.
-// Isso garante que notificações push cheguem com som e alerta mesmo antes
-// do usuário navegar para a tela Home.
 import '../services/pushNotifications';
 
 // Impede que a splash screen nativa suma automaticamente
 SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
-  // Pré-carrega todas as fontes de ícones usadas no app para evitar
-  // o erro "Unable to download asset" no ExpoAsset.downloadAsync
   const [fontsLoaded, fontError] = useFonts({
     ...Feather.font,
     ...FontAwesome5.font,
@@ -33,21 +30,16 @@ export default function TabLayout() {
     ...MaterialCommunityIcons.font,
   });
 
-  const [appIsReady, setAppIsReady] = useState(false);
-  const [animationComplete, setAnimationComplete] = useState(false);
-  
-  // Valores animados
-  const opacity = useRef(new Animated.Value(1)).current;
-  const scale = useRef(new Animated.Value(1)).current;
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   const router = useRouter();
 
   // Fallback de segurança: nunca deixa o app travado na splash por mais de 8s
-  // (ex.: fontes que nunca carregam). A verificação de sessão continua em
-  // segundo plano mesmo que este fallback dispare.
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
-      setAppIsReady(true);
+      setLoading(false);
+      SplashScreen.hideAsync().catch(() => {});
     }, 8000);
     return () => clearTimeout(safetyTimer);
   }, []);
@@ -59,36 +51,34 @@ export default function TabLayout() {
     async function prepare() {
       try {
         // Aguarda o Firebase restaurar a sessão persistida no AsyncStorage.
-        // IMPORTANTE: não usar timeout curto aqui. Ao abrir o app após algum tempo
-        // fechado, o Firebase precisa renovar o token pela rede antes de confirmar
-        // o utilizador, o que pode levar vários segundos em redes móveis.
         await auth.authStateReady();
         if (cancelled) return;
 
-        const user = auth.currentUser;
-        if (user) {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
           try {
             const rememberMe = await AsyncStorage.getItem('@lembrar_me_status');
             if (rememberMe === 'false') {
               // O utilizador escolheu não ser lembrado
               await signOut(auth);
-              // Continua na tela de login
+              setUser(null);
             } else {
               // O utilizador escolheu ser lembrado (ou é undefined)
-              router.replace('/home');
+              setUser(currentUser);
             }
           } catch (e) {
             console.warn('Erro ao ler AsyncStorage', e);
+            setUser(currentUser);
           }
+        } else {
+          setUser(null);
         }
-
-        // Pequeno atraso extra para garantir uma transição suave da Splash
-        await new Promise(resolve => setTimeout(resolve, 300));
       } catch (e) {
-        console.warn(e);
+        console.warn('Erro ao restaurar sessão de autenticação:', e);
       } finally {
         if (!cancelled) {
-          setAppIsReady(true);
+          setLoading(false);
+          SplashScreen.hideAsync().catch(() => {});
         }
       }
     }
@@ -97,47 +87,13 @@ export default function TabLayout() {
     return () => {
       cancelled = true;
     };
-  }, [fontsLoaded, fontError, router]);
+  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    if (appIsReady) {
-      // Oculta a tela nativa para revelar nossa tela customizada que vai rodar a animação
-      SplashScreen.hideAsync().then(() => {
-        // Inicia a sequência de animação
-        Animated.sequence([
-          // 1. Destaque (Pulse) logo após a nativa fechar
-          Animated.sequence([
-            Animated.timing(scale, {
-              toValue: 1.05,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(scale, {
-              toValue: 1,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-          ]),
-          // Pausa sutil antes de sair
-          Animated.delay(150),
-          // 3. Saída (Fade-Out + Zoom out)
-          Animated.parallel([
-            Animated.timing(opacity, {
-              toValue: 0,
-              duration: 500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(scale, {
-              toValue: 1.2,
-              duration: 500,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]).start(() => {
-          // Desmonta a tela customizada revelando o App
-          setAnimationComplete(true);
-        });
-      });
+    if (!loading) {
+      if (user) {
+        router.replace('/home');
+      }
 
       // ─── Lógica de redirecionamento de Push Notifications (Deep Linking) ───
       let NotificationsModule: any = null;
@@ -175,48 +131,27 @@ export default function TabLayout() {
         return () => sub.remove();
       }
     }
-  }, [appIsReady, opacity, scale, router]);
+  }, [loading, router]);
+
+  // ─── Trava de Carregamento com a Splash Customizada (Loading Lock) ───
+  // Segura a Splash Screen na tela enquanto o Firebase valida o AsyncStorage,
+  // impedindo qualquer renderização prematura da tela de Login.
+  if (loading) {
+    return <CustomSplashScreen />;
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0F0F19' }}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{ headerShown: false }}
+        initialRouteName={user ? 'home' : 'index'}
+      >
         <Stack.Screen name="index" />
         <Stack.Screen name="home" />
         <Stack.Screen name="kids" />
         <Stack.Screen name="AvisosKids" />
         <Stack.Screen name="avisos-kids" />
       </Stack>
-
-      {!animationComplete && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: '#0F0F19', // Dark Mode Premium
-              opacity: opacity, // Fade-In inicial e Fade-Out final
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 999,
-            },
-          ]}
-        >
-          <Animated.Image
-            source={require('../../assets/Img/logo sem fundo.png')}
-            style={{
-              width: 200, 
-              height: 200,
-              resizeMode: 'contain',
-              transform: [{ scale: scale }], // Efeito de entrada e pulso
-              shadowColor: 'rgba(255, 255, 255, 0.4)', // DropShadow/Brilho (iOS)
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 1,
-              shadowRadius: 30,
-              elevation: 15, // DropShadow (Android)
-            } as any}
-          />
-        </Animated.View>
-      )}
     </View>
   );
 }
