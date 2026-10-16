@@ -15,7 +15,21 @@ import {
   ShieldAlert,
   Megaphone,
   Send,
+  BookOpen,
+  Star,
 } from 'lucide-react';
+import {
+  collection,
+  doc,
+  addDoc,
+  deleteDoc,
+  writeBatch,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { db } from '../config/firebase';
 import {
   ouvirKids,
   addKid,
@@ -28,6 +42,19 @@ import {
   type FichaInclusao,
   type AvisoKids,
 } from '../services/kidsService';
+
+// ─── Tipagem Ensino Kids (Aulas) ──────────────────────────────────────────────
+
+export interface AulaKidsItem {
+  id: string;
+  titulo: string;
+  referencia: string;
+  resumo?: string;
+  momentoFamilia?: string;
+  atividades?: string;
+  aulaDaSemana?: boolean;
+  dataCriacao?: any;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -97,6 +124,16 @@ function formatarDataAviso(data: AvisoKids['dataCriacao']): string {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   } catch {
     return '';
+  }
+}
+
+function formatarDataAula(data: any): string {
+  if (!data) return 'Recente';
+  try {
+    const d = data instanceof Date ? data : data.toDate ? data.toDate() : new Date(data);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return 'Recente';
   }
 }
 
@@ -587,6 +624,19 @@ export default function MinisterioKidsPage() {
   const [buscaAviso, setBuscaAviso] = useState('');
   const [limiteAvisos, setLimiteAvisos] = useState(10);
 
+  // Ensino Kids (Aulas / Lições)
+  const [aulasKids, setAulasKids] = useState<AulaKidsItem[]>([]);
+  const [carregandoAulas, setCarregandoAulas] = useState(true);
+  const [tituloAula, setTituloAula] = useState('');
+  const [referenciaAula, setReferenciaAula] = useState('');
+  const [resumoAula, setResumoAula] = useState('');
+  const [momentoFamiliaAula, setMomentoFamiliaAula] = useState('');
+  const [atividadesAula, setAtividadesAula] = useState('');
+  const [marcarSemanaAoPublicar, setMarcarSemanaAoPublicar] = useState(false);
+  const [publicandoAula, setPublicandoAula] = useState(false);
+  const [atualizandoSemanaId, setAtualizandoSemanaId] = useState<string | null>(null);
+  const [buscaAula, setBuscaAula] = useState('');
+
   // Listener em tempo real
   useEffect(() => {
     setCarregando(true);
@@ -602,6 +652,137 @@ export default function MinisterioKidsPage() {
     const unsubscribe = ouvirAvisosKids((dados) => setAvisosKids(dados));
     return () => unsubscribe();
   }, []);
+
+  // Listener em tempo real das aulas kids
+  useEffect(() => {
+    const aulasRef = collection(db, 'aulas_kids');
+    const q = query(aulasRef, orderBy('dataCriacao', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const itens: AulaKidsItem[] = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...(docSnap.data() as Omit<AulaKidsItem, 'id'>),
+        }));
+        setAulasKids(itens);
+        setCarregandoAulas(false);
+      },
+      (error) => {
+        console.error('[aulas_kids] Erro na query ordenada, usando fallback:', error);
+        const fallbackUnsub = onSnapshot(aulasRef, (snap) => {
+          const itens: AulaKidsItem[] = snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<AulaKidsItem, 'id'>),
+          }));
+          itens.sort((a, b) => {
+            const timeA = a.dataCriacao?.toMillis ? a.dataCriacao.toMillis() : 0;
+            const timeB = b.dataCriacao?.toMillis ? b.dataCriacao.toMillis() : 0;
+            return timeB - timeA;
+          });
+          setAulasKids(itens);
+          setCarregandoAulas(false);
+        });
+        return () => fallbackUnsub();
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // Publicar aula kids
+  const handlePublicarAula = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tituloAula.trim() || !referenciaAula.trim()) {
+      alert('Preencha ao menos o Título e a Referência Bíblica da aula.');
+      return;
+    }
+
+    setPublicandoAula(true);
+    try {
+      if (marcarSemanaAoPublicar) {
+        const batch = writeBatch(db);
+        // Desmarca qualquer outra aula que seja aulaDaSemana: true
+        aulasKids.forEach((aula) => {
+          if (aula.aulaDaSemana) {
+            batch.update(doc(db, 'aulas_kids', aula.id), { aulaDaSemana: false });
+          }
+        });
+        const novoDocRef = doc(collection(db, 'aulas_kids'));
+        batch.set(novoDocRef, {
+          titulo: tituloAula.trim(),
+          referencia: referenciaAula.trim(),
+          resumo: resumoAula.trim(),
+          momentoFamilia: momentoFamiliaAula.trim(),
+          atividades: atividadesAula.trim(),
+          aulaDaSemana: true,
+          dataCriacao: serverTimestamp(),
+        });
+        await batch.commit();
+      } else {
+        await addDoc(collection(db, 'aulas_kids'), {
+          titulo: tituloAula.trim(),
+          referencia: referenciaAula.trim(),
+          resumo: resumoAula.trim(),
+          momentoFamilia: momentoFamiliaAula.trim(),
+          atividades: atividadesAula.trim(),
+          aulaDaSemana: false,
+          dataCriacao: serverTimestamp(),
+        });
+      }
+
+      setTituloAula('');
+      setReferenciaAula('');
+      setResumoAula('');
+      setMomentoFamiliaAula('');
+      setAtividadesAula('');
+      setMarcarSemanaAoPublicar(false);
+    } catch (error: any) {
+      console.error('Erro ao publicar aula kids:', error);
+      alert(`Erro ao publicar aula: ${error?.message || 'Tente novamente.'}`);
+    } finally {
+      setPublicandoAula(false);
+    }
+  };
+
+  // Alternar Aula da Semana garantindo apenas uma true por vez
+  const handleToggleAulaDaSemana = async (aulaId: string, novoValor: boolean) => {
+    setAtualizandoSemanaId(aulaId);
+    try {
+      if (novoValor) {
+        const batch = writeBatch(db);
+        aulasKids.forEach((aula) => {
+          if (aula.id === aulaId) {
+            batch.update(doc(db, 'aulas_kids', aula.id), { aulaDaSemana: true });
+          } else if (aula.aulaDaSemana) {
+            batch.update(doc(db, 'aulas_kids', aula.id), { aulaDaSemana: false });
+          }
+        });
+        await batch.commit();
+      } else {
+        const docRef = doc(db, 'aulas_kids', aulaId);
+        const batch = writeBatch(db);
+        batch.update(docRef, { aulaDaSemana: false });
+        await batch.commit();
+      }
+    } catch (error: any) {
+      console.error('Erro ao atualizar Aula da Semana:', error);
+      alert('Erro ao atualizar a Aula da Semana.');
+    } finally {
+      setAtualizandoSemanaId(null);
+    }
+  };
+
+  // Excluir aula kids
+  const handleExcluirAula = async (id: string, titulo: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir a aula "${titulo}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'aulas_kids', id));
+    } catch (error: any) {
+      console.error('Erro ao excluir aula kids:', error);
+      alert('Erro ao excluir aula.');
+    }
+  };
 
   // Publicar aviso kids
   const handlePublicarAviso = async (e: React.FormEvent) => {
@@ -655,6 +836,17 @@ export default function MinisterioKidsPage() {
       (aviso.mensagem || '').toLowerCase().includes(termo)
     );
   }, [avisosKids, buscaAviso]);
+
+  // Filtragem das aulas kids
+  const aulasFiltradas = useMemo(() => {
+    const termo = buscaAula.trim().toLowerCase();
+    if (!termo) return aulasKids;
+    return aulasKids.filter((aula) =>
+      (aula.titulo || '').toLowerCase().includes(termo) ||
+      (aula.referencia || '').toLowerCase().includes(termo) ||
+      (aula.resumo || '').toLowerCase().includes(termo)
+    );
+  }, [aulasKids, buscaAula]);
 
   // Contagens
   const totalKids = kids.length;
@@ -1066,6 +1258,306 @@ export default function MinisterioKidsPage() {
                 </>
               )}
             </div>
+          </div>
+        </section>
+
+        {/* Ensino Kids — Publicação e Gestão de Aulas */}
+        <section id="ensino-kids-secao" className="bg-white border border-gray-100 rounded-3xl shadow-sm p-6 flex flex-col gap-6">
+          {/* Header da Seção */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="bg-indigo-100 p-2.5 rounded-2xl text-indigo-700">
+                <BookOpen size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-gray-900 leading-tight">
+                    Ensino Kids — Aulas e Lições
+                  </h2>
+                  <span className="bg-indigo-50 text-indigo-700 text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-200">
+                    Sincronizado com App Mobile
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 font-medium mt-0.5">
+                  Publique o conteúdo das lições semanais (resumo, momento família e atividades) para o app dos pais.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700">
+                {aulasKids.length} {aulasKids.length === 1 ? 'aula cadastrada' : 'aulas cadastradas'}
+              </span>
+            </div>
+          </div>
+
+          {/* Formulário de Cadastro */}
+          <form onSubmit={handlePublicarAula} className="bg-gray-50 border border-gray-200/80 rounded-2xl p-5 flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <Plus size={16} className="text-indigo-600" />
+                Cadastrar Nova Aula / Lição
+              </h3>
+              <span className="text-[11px] text-gray-400 font-medium">Campos com * são obrigatórios</span>
+            </div>
+
+            {/* Linha 1: Título e Referência Bíblica */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 block">
+                  Título da Lição *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={tituloAula}
+                  onChange={(e) => setTituloAula(e.target.value)}
+                  placeholder="Ex: A Coragem de Davi"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-gray-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 block">
+                  Referência Bíblica *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={referenciaAula}
+                  onChange={(e) => setReferenciaAula(e.target.value)}
+                  placeholder="Ex: 1 Samuel 17"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-gray-400"
+                />
+              </div>
+            </div>
+
+            {/* Linha 2: Três textareas grandes para o conteúdo das abas */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Resumo da Aula</span>
+                  <span className="text-[10px] text-gray-400 font-normal">Aba 1 no App</span>
+                </label>
+                <textarea
+                  rows={5}
+                  value={resumoAula}
+                  onChange={(e) => setResumoAula(e.target.value)}
+                  placeholder="Descreva o ensino transmitido para as crianças, os pontos principais e a mensagem bíblica central..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Momento Família</span>
+                  <span className="text-[10px] text-gray-400 font-normal">Aba 2 no App</span>
+                </label>
+                <textarea
+                  rows={5}
+                  value={momentoFamiliaAula}
+                  onChange={(e) => setMomentoFamiliaAula(e.target.value)}
+                  placeholder="Perguntas e dicas práticas para os pais conversarem à mesa com os filhos durante a semana..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Atividades</span>
+                  <span className="text-[10px] text-gray-400 font-normal">Aba 3 no App</span>
+                </label>
+                <textarea
+                  rows={5}
+                  value={atividadesAula}
+                  onChange={(e) => setAtividadesAula(e.target.value)}
+                  placeholder="Sugestões de dinâmicas, desenhos, orações ou brincadeiras para fixar o aprendizado em casa..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* Linha 3: Checkbox Aula da Semana + Botão Publicar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2 border-t border-gray-200/60">
+              <label className="inline-flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={marcarSemanaAoPublicar}
+                  onChange={(e) => setMarcarSemanaAoPublicar(e.target.checked)}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  <Star size={14} className={marcarSemanaAoPublicar ? "text-amber-500 fill-amber-500" : "text-gray-400"} />
+                  Definir imediatamente como <strong className="text-indigo-900">Aula da Semana</strong> (destaque no topo do app)
+                </span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={publicandoAula || !tituloAula.trim() || !referenciaAula.trim()}
+                className="w-full sm:w-auto py-2.5 px-6 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+              >
+                {publicandoAula ? <Spinner /> : <BookOpen size={15} />}
+                Publicar Aula
+              </button>
+            </div>
+          </form>
+
+          {/* Listagem e Gerenciamento */}
+          <div className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Aulas Cadastradas</h3>
+                <p className="text-xs text-gray-400">
+                  Gerencie as aulas publicadas e selecione qual é a "Aula da Semana" ativa no aplicativo.
+                </p>
+              </div>
+
+              {/* Busca local nas aulas */}
+              <div className="relative w-full sm:w-72">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por título ou passagem..."
+                  value={buscaAula}
+                  onChange={(e) => setBuscaAula(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Lista de Aulas */}
+            {carregandoAulas ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
+                <Spinner />
+                <span className="text-xs font-medium">Carregando aulas...</span>
+              </div>
+            ) : aulasKids.length === 0 ? (
+              <div className="text-center py-10 rounded-2xl border border-dashed border-gray-200 p-6">
+                <BookOpen size={28} className="text-gray-300 mx-auto mb-2" />
+                <p className="text-sm font-bold text-gray-700">Nenhuma aula cadastrada ainda.</p>
+                <p className="text-xs text-gray-400 mt-1">Preencha o formulário acima para publicar a primeira lição do Ministério Kids.</p>
+              </div>
+            ) : aulasFiltradas.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-xs font-medium">
+                Nenhuma aula encontrada para "{buscaAula}".
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3.5">
+                {aulasFiltradas.map((aula) => {
+                  const isDestaque = Boolean(aula.aulaDaSemana);
+                  const isAtualizando = atualizandoSemanaId === aula.id;
+
+                  return (
+                    <div
+                      key={aula.id}
+                      className={`rounded-2xl border transition-all p-4.5 flex flex-col gap-3 shadow-sm ${
+                        isDestaque
+                          ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-300'
+                          : 'bg-white border-gray-200/90 hover:border-gray-300'
+                      }`}
+                    >
+                      {/* Topo do Card */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <div className={`p-2 rounded-xl flex-shrink-0 mt-0.5 ${
+                            isDestaque ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            <BookOpen size={16} />
+                          </div>
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="text-sm font-bold text-gray-900 leading-tight">
+                                {aula.titulo}
+                              </h4>
+                              <span className="bg-indigo-50 text-indigo-700 text-[11px] font-bold px-2 py-0.5 rounded-md border border-indigo-200">
+                                {aula.referencia}
+                              </span>
+                              {isDestaque && (
+                                <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm">
+                                  <Star size={11} className="fill-white" />
+                                  Aula da Semana
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-gray-400 font-medium">
+                              Publicada em {formatarDataAula(aula.dataCriacao)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Ações: Toggle Aula da Semana + Botão Excluir */}
+                        <div className="flex items-center gap-3 self-end sm:self-center">
+                          {/* Toggle / Checkbox de Aula da Semana */}
+                          <label className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-colors select-none ${
+                            isDestaque
+                              ? 'bg-amber-100/80 border-amber-300 text-amber-900 shadow-xs'
+                              : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                          } ${isAtualizando ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={isDestaque}
+                              disabled={isAtualizando}
+                              onChange={(e) => handleToggleAulaDaSemana(aula.id, e.target.checked)}
+                              className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 border-gray-300 cursor-pointer"
+                            />
+                            <span>
+                              {isDestaque ? 'Aula da Semana Ativa' : 'Marcar como Aula da Semana'}
+                            </span>
+                          </label>
+
+                          {/* Botão de Excluir */}
+                          <button
+                            onClick={() => handleExcluirAula(aula.id, aula.titulo)}
+                            className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors flex-shrink-0"
+                            title="Excluir aula"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Conteúdo resumido das abas */}
+                      {(aula.resumo || aula.momentoFamilia || aula.atividades) && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-gray-100/80 text-xs">
+                          {aula.resumo && (
+                            <div className="bg-white/70 rounded-xl p-2.5 border border-gray-100">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                                Resumo
+                              </span>
+                              <p className="text-gray-700 line-clamp-3 leading-relaxed whitespace-pre-line">
+                                {aula.resumo}
+                              </p>
+                            </div>
+                          )}
+
+                          {aula.momentoFamilia && (
+                            <div className="bg-white/70 rounded-xl p-2.5 border border-gray-100">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                                Momento Família
+                              </span>
+                              <p className="text-gray-700 line-clamp-3 leading-relaxed whitespace-pre-line">
+                                {aula.momentoFamilia}
+                              </p>
+                            </div>
+                          )}
+
+                          {aula.atividades && (
+                            <div className="bg-white/70 rounded-xl p-2.5 border border-gray-100">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                                Atividades
+                              </span>
+                              <p className="text-gray-700 line-clamp-3 leading-relaxed whitespace-pre-line">
+                                {aula.atividades}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
       </div>

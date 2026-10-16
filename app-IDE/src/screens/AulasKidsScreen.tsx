@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,26 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useNavigation } from 'expo-router';
 import { ChevronLeft, BookOpen, Sparkles, Heart, Award } from 'lucide-react-native';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
-// ─── DADOS ESTÁTICOS (MOCK DATA) ───────────────────────────────────────────────
-const AULA_SEMANA = {
+// ─── TIPAGEM DOS DADOS ────────────────────────────────────────────────────────
+export interface AulaKids {
+  id: string;
+  titulo: string;
+  referencia: string;
+  versiculoChave?: string;
+  resumo?: string;
+  momentoFamilia?: string;
+  atividades?: string;
+  tag?: string;
+  data?: string;
+  aulaDaSemana?: boolean;
+  dataCriacao?: any;
+}
+
+// ─── DADOS PADRÃO (FALLBACK) ─────────────────────────────────────────────────
+const AULA_SEMANA_DEFAULT: AulaKids = {
   id: 'aula-semana-atual',
   tag: 'Aula da Semana',
   titulo: 'A Coragem de Davi',
@@ -25,9 +42,10 @@ const AULA_SEMANA = {
     'Dica para conversar à mesa: Pergunte aos seus filhos se eles já sentiram medo de algo no colégio ou na vida. Relembre que Davi orou e confiou. Orem juntos declarando coragem e paz sobre a casa.',
   atividades:
     '1. Desenhe 5 pedrinhas com palavras de fé (Fé, Oração, Amor, Paz, Coragem).\n2. Encenem juntos a história de Davi e Golias com brinquedos ou fantoches.',
+  aulaDaSemana: true,
 };
 
-const AULAS_ANTERIORES = [
+const AULAS_ANTERIORES_DEFAULT: AulaKids[] = [
   {
     id: 'aula-ant-1',
     titulo: 'A Arca de Noé',
@@ -58,8 +76,80 @@ export default function AulasKidsScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
+  // Estados dos dados dinâmicos do Firestore
+  const [aulaDestaque, setAulaDestaque] = useState<AulaKids>(AULA_SEMANA_DEFAULT);
+  const [aulasAnteriores, setAulasAnteriores] = useState<AulaKids[]>(AULAS_ANTERIORES_DEFAULT);
+
   // Estado para alternância visual das abas/pílulas
   const [activeTab, setActiveTab] = useState<TabTipo>('resumo');
+
+  // ─── Busca de Dados em Tempo Real no Firestore (coleção aulas_kids) ────────
+  useEffect(() => {
+    let unsubscribeFallback: (() => void) | null = null;
+
+    const processSnapshot = (snapshot: any) => {
+      if (!snapshot.empty) {
+        const lista: AulaKids[] = snapshot.docs.map((docSnap: any) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            titulo: data.titulo || '',
+            referencia: data.referencia || '',
+            versiculoChave: data.versiculoChave || '',
+            resumo: data.resumo || '',
+            momentoFamilia: data.momentoFamilia || '',
+            atividades: data.atividades || '',
+            tag: data.tag || 'Lição',
+            data: data.data || '',
+            aulaDaSemana: Boolean(data.aulaDaSemana),
+            dataCriacao: data.dataCriacao || null,
+          };
+        });
+
+        // Identifica a aula com a flag aulaDaSemana: true (ou a mais recente)
+        const indexDestaque = lista.findIndex((item) => item.aulaDaSemana === true);
+        let destaque: AulaKids;
+        let anteriores: AulaKids[];
+
+        if (indexDestaque !== -1) {
+          destaque = lista[indexDestaque];
+          anteriores = lista.filter((_, idx) => idx !== indexDestaque);
+        } else {
+          destaque = lista[0];
+          anteriores = lista.slice(1);
+        }
+
+        setAulaDestaque(destaque);
+        setAulasAnteriores(anteriores);
+      }
+    };
+
+    const q = query(collection(db, 'aulas_kids'), orderBy('dataCriacao', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        processSnapshot(snapshot);
+      },
+      (error) => {
+        console.error('[AulasKidsScreen] Erro com orderBy(dataCriacao), utilizando consulta direta:', error);
+        unsubscribeFallback = onSnapshot(
+          collection(db, 'aulas_kids'),
+          (fallbackSnap) => {
+            processSnapshot(fallbackSnap);
+          },
+          (fallbackErr) => {
+            console.error('[AulasKidsScreen] Erro ao carregar aulas_kids:', fallbackErr);
+          }
+        );
+      }
+    );
+
+    return () => {
+      unsubscribe();
+      if (unsubscribeFallback) unsubscribeFallback();
+    };
+  }, []);
 
   const handleVoltar = () => {
     if (navigation && typeof (navigation as any).canGoBack === 'function' && (navigation as any).canGoBack()) {
@@ -115,20 +205,20 @@ export default function AulasKidsScreen() {
           {/* Tag Amarela */}
           <View className="self-start bg-yellow-100 px-3 py-1 rounded-full mb-3" style={styles.tagAmarelaContainer}>
             <Text className="text-yellow-800 font-bold text-xs" style={styles.tagAmarelaText}>
-              Aula da Semana
+              {aulaDestaque.tag || 'Aula da Semana'}
             </Text>
           </View>
 
           {/* Título da Lição */}
           <Text className="text-2xl font-extrabold text-slate-800 mb-1" style={styles.tituloLicao}>
-            {AULA_SEMANA.titulo}
+            {aulaDestaque.titulo}
           </Text>
 
           {/* Referência Bíblica Sutil */}
           <View className="flex-row items-center mb-4" style={styles.referenciaRow}>
             <BookOpen size={14} color="#64748B" />
             <Text className="text-xs font-semibold text-slate-500 ml-1.5" style={styles.referenciaText}>
-              {AULA_SEMANA.referencia}
+              {aulaDestaque.referencia}
             </Text>
           </View>
 
@@ -211,13 +301,15 @@ export default function AulasKidsScreen() {
             {activeTab === 'resumo' && (
               <View>
                 <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
-                  {AULA_SEMANA.resumo}
+                  {aulaDestaque.resumo}
                 </Text>
-                <View className="mt-3 pt-3 border-t border-slate-200/70" style={styles.versiculoBox}>
-                  <Text className="text-xs font-semibold text-slate-500 italic" style={styles.versiculoTexto}>
-                    {AULA_SEMANA.versiculoChave}
-                  </Text>
-                </View>
+                {Boolean(aulaDestaque.versiculoChave) && (
+                  <View className="mt-3 pt-3 border-t border-slate-200/70" style={styles.versiculoBox}>
+                    <Text className="text-xs font-semibold text-slate-500 italic" style={styles.versiculoTexto}>
+                      {aulaDestaque.versiculoChave}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -230,7 +322,7 @@ export default function AulasKidsScreen() {
                   </Text>
                 </View>
                 <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
-                  {AULA_SEMANA.momentoFamilia}
+                  {aulaDestaque.momentoFamilia}
                 </Text>
               </View>
             )}
@@ -244,7 +336,7 @@ export default function AulasKidsScreen() {
                   </Text>
                 </View>
                 <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
-                  {AULA_SEMANA.atividades}
+                  {aulaDestaque.atividades}
                 </Text>
               </View>
             )}
@@ -262,7 +354,7 @@ export default function AulasKidsScreen() {
           contentContainerStyle={styles.aulasAnterioresScroll}
           className="pb-8"
         >
-          {AULAS_ANTERIORES.map((aula) => (
+          {aulasAnteriores.map((aula) => (
             <TouchableOpacity
               key={aula.id}
               activeOpacity={0.8}
@@ -272,7 +364,7 @@ export default function AulasKidsScreen() {
               <View>
                 <View className="self-start bg-slate-100 px-2 py-0.5 rounded-full mb-2" style={styles.badgeAnterior}>
                   <Text className="text-[10px] font-semibold text-slate-600" style={styles.badgeAnteriorTexto}>
-                    {aula.tag}
+                    {aula.tag || 'Lição'}
                   </Text>
                 </View>
                 <Text
