@@ -168,7 +168,7 @@ export default function AulasKidsScreen() {
       className="flex-1"
       resizeMode="cover"
       source={require('../../assets/Img/bdavisos.jpg')}
-      style={[styles.backgroundImage, { paddingTop: insets.top }]}
+      style={{ flex: 1, paddingTop: insets.top }}
     >
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
 
@@ -193,9 +193,11 @@ export default function AulasKidsScreen() {
       </View>
 
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
         className="flex-1"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* ─── 2. Destaque: Aula da Semana ─────────────────────────────────── */}
         <View
@@ -298,48 +300,54 @@ export default function AulasKidsScreen() {
 
           {/* Bloco de Texto simulando o conteúdo selecionado */}
           <View className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100" style={styles.conteudoBloco}>
-            {activeTab === 'resumo' && (
-              <View>
-                <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
-                  {aulaDestaque.resumo}
-                </Text>
-                {Boolean(aulaDestaque.versiculoChave) && (
-                  <View className="mt-3 pt-3 border-t border-slate-200/70" style={styles.versiculoBox}>
-                    <Text className="text-xs font-semibold text-slate-500 italic" style={styles.versiculoTexto}>
-                      {aulaDestaque.versiculoChave}
+            <ScrollView
+              style={{ maxHeight: 350 }}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={true}
+            >
+              {activeTab === 'resumo' && (
+                <View>
+                  <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
+                    {aulaDestaque.resumo}
+                  </Text>
+                  {Boolean(aulaDestaque.versiculoChave) && (
+                    <View className="mt-3 pt-3 border-t border-slate-200/70" style={styles.versiculoBox}>
+                      <Text className="text-xs font-semibold text-slate-500 italic" style={styles.versiculoTexto}>
+                        {aulaDestaque.versiculoChave}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {activeTab === 'familia' && (
+                <View>
+                  <View className="flex-row items-center mb-1.5" style={styles.tabIconHeader}>
+                    <Heart size={15} color="#E11D48" />
+                    <Text className="text-xs font-bold text-slate-800 ml-1.5" style={styles.tabHeaderTitle}>
+                      Conversa em Casa
                     </Text>
                   </View>
-                )}
-              </View>
-            )}
-
-            {activeTab === 'familia' && (
-              <View>
-                <View className="flex-row items-center mb-1.5" style={styles.tabIconHeader}>
-                  <Heart size={15} color="#E11D48" />
-                  <Text className="text-xs font-bold text-slate-800 ml-1.5" style={styles.tabHeaderTitle}>
-                    Conversa em Casa
+                  <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
+                    {aulaDestaque.momentoFamilia}
                   </Text>
                 </View>
-                <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
-                  {aulaDestaque.momentoFamilia}
-                </Text>
-              </View>
-            )}
+              )}
 
-            {activeTab === 'atividades' && (
-              <View>
-                <View className="flex-row items-center mb-1.5" style={styles.tabIconHeader}>
-                  <Sparkles size={15} color="#D97706" />
-                  <Text className="text-xs font-bold text-slate-800 ml-1.5" style={styles.tabHeaderTitle}>
-                    Dinâmica Prática
+              {activeTab === 'atividades' && (
+                <View>
+                  <View className="flex-row items-center mb-1.5" style={styles.tabIconHeader}>
+                    <Sparkles size={15} color="#D97706" />
+                    <Text className="text-xs font-bold text-slate-800 ml-1.5" style={styles.tabHeaderTitle}>
+                      Dinâmica Prática
+                    </Text>
+                  </View>
+                  <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
+                    {aulaDestaque.atividades}
                   </Text>
                 </View>
-                <Text className="text-slate-700 text-sm leading-6" style={styles.resumoTexto}>
-                  {aulaDestaque.atividades}
-                </Text>
-              </View>
-            )}
+              )}
+            </ScrollView>
           </View>
         </View>
 
@@ -433,7 +441,8 @@ const styles = StyleSheet.create({
     color: '#0F172A', // slate-900
   },
   scrollContent: {
-    paddingBottom: 40,
+    flexGrow: 1,
+    paddingBottom: 120,
   },
   cardDestaque: {
     backgroundColor: '#FFFFFF',
