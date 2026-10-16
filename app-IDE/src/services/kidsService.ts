@@ -7,6 +7,7 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
@@ -19,6 +20,8 @@ export interface AvisoKids {
   titulo: string;
   mensagem: string;
   dataCriacao: Date | Timestamp | null;
+  apenasPaisKids?: boolean;
+  destinatariosIds?: string[];
 }
 
 const avisosKidsRef = collection(db, 'avisos_kids');
@@ -29,7 +32,27 @@ function mapAvisoKids(id: string, data: Record<string, any>): AvisoKids {
     titulo: data.titulo || '',
     mensagem: data.mensagem || '',
     dataCriacao: data.dataCriacao || null,
+    apenasPaisKids: data.apenasPaisKids !== undefined ? data.apenasPaisKids : true,
+    destinatariosIds: Array.isArray(data.destinatariosIds) ? data.destinatariosIds : [],
   };
+}
+
+/**
+ * Verifica se um usuário possui filhos cadastrados no Ministério Kids.
+ */
+export async function verificarSeUsuarioEPaiKids(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const q = query(
+      collection(db, 'kids'),
+      where('membroIdResponsavel', '==', userId)
+    );
+    const snap = await getDocs(q);
+    return !snap.empty;
+  } catch (error) {
+    console.error('[kidsService] Erro ao verificar se usuário é pai kids:', error);
+    return false;
+  }
 }
 
 /**
@@ -43,21 +66,79 @@ export async function getAvisosKids(): Promise<AvisoKids[]> {
 
 /**
  * Listener em tempo real para os avisos do Ministério Kids (mais recentes primeiro).
+ * Garante que avisos restritos aos pais só sejam exibidos para quem tem filhos cadastrados.
  */
 export function ouvirAvisosKids(
-  callback: (avisos: AvisoKids[]) => void
+  callback: (avisos: AvisoKids[]) => void,
+  userId?: string
 ): () => void {
-  const q = query(avisosKidsRef, orderBy('dataCriacao', 'desc'));
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      callback(snapshot.docs.map((d) => mapAvisoKids(d.id, d.data())));
+  const qAvisos = query(avisosKidsRef, orderBy('dataCriacao', 'desc'));
+
+  if (!userId) {
+    return onSnapshot(
+      qAvisos,
+      (snapshot) => {
+        const permitidos = snapshot.docs
+          .map((d) => mapAvisoKids(d.id, d.data()))
+          .filter((a) => a.apenasPaisKids === false);
+        callback(permitidos);
+      },
+      (error) => {
+        console.error('[kidsService] Erro ao escutar avisos kids:', error.message);
+        callback([]);
+      }
+    );
+  }
+
+  // Com usuário autenticado: escuta os filhos do usuário em tempo real
+  const qKids = query(
+    collection(db, 'kids'),
+    where('membroIdResponsavel', '==', userId)
+  );
+
+  let unsubscribeAvisos: (() => void) | null = null;
+
+  const unsubscribeKids = onSnapshot(
+    qKids,
+    (kidsSnap) => {
+      const isPai = !kidsSnap.empty;
+
+      if (unsubscribeAvisos) {
+        unsubscribeAvisos();
+      }
+
+      unsubscribeAvisos = onSnapshot(
+        qAvisos,
+        (snapshot) => {
+          const lista = snapshot.docs.map((d) => mapAvisoKids(d.id, d.data()));
+          const permitidos = lista.filter((aviso) => {
+            const eRestritoPais = aviso.apenasPaisKids !== false;
+            if (eRestritoPais) {
+              if (aviso.destinatariosIds && aviso.destinatariosIds.length > 0) {
+                return aviso.destinatariosIds.includes(userId) || isPai;
+              }
+              return isPai;
+            }
+            return true;
+          });
+          callback(permitidos);
+        },
+        (error) => {
+          console.error('[kidsService] Erro ao escutar avisos kids:', error.message);
+          callback([]);
+        }
+      );
     },
-    (error) => {
-      console.error('[kidsService] Erro ao escutar avisos kids:', error.message);
+    (err) => {
+      console.error('[kidsService] Erro ao escutar filhos do usuário:', err);
       callback([]);
     }
   );
+
+  return () => {
+    unsubscribeKids();
+    if (unsubscribeAvisos) unsubscribeAvisos();
+  };
 }
 
 /**

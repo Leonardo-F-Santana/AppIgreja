@@ -18,7 +18,8 @@ export interface ExpoPushMessage {
 export async function enviarNotificacaoPushEmMassa(
   titulo: string,
   mensagem: string,
-  tokens: string[]
+  tokens: string[],
+  dataPayload?: Record<string, unknown>
 ): Promise<void> {
   if (!tokens || tokens.length === 0) {
     console.log('[pushNotifications] Nenhum token fornecido. Notificação abortada.');
@@ -33,7 +34,7 @@ export async function enviarNotificacaoPushEmMassa(
     body: mensagem,
     channelId: 'default',
     priority: 'high',
-    data: {
+    data: dataPayload || {
       tipo: 'aviso',
       timestamp: Date.now(),
     },

@@ -111,6 +111,8 @@ export default function TabLayout() {
           const data = response?.notification?.request?.content?.data;
           if (data?.tipo === 'aviso') {
             router.push('/avisos');
+          } else if (data?.tipo === 'aviso_kids') {
+            router.push('/AvisosKids');
           } else if (data?.tipo === 'evento_lembrete') {
             router.push('/eventos');
           }

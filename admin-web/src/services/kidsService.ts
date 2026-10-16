@@ -12,6 +12,7 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
+import { enviarNotificacaoPushEmMassa } from "../utils/pushNotifications";
 
 // ─── Tipagens ─────────────────────────────────────────────────────────────────
 
@@ -184,6 +185,8 @@ export interface AvisoKids {
   titulo: string;
   mensagem: string;
   dataCriacao: Date | Timestamp | null;
+  apenasPaisKids?: boolean;
+  destinatariosIds?: string[];
 }
 
 const avisosKidsRef = collection(db, "avisos_kids");
@@ -194,7 +197,49 @@ function mapAvisoKids(id: string, data: Record<string, any>): AvisoKids {
     titulo: data.titulo || "",
     mensagem: data.mensagem || "",
     dataCriacao: data.dataCriacao || null,
+    apenasPaisKids: data.apenasPaisKids !== undefined ? data.apenasPaisKids : true,
+    destinatariosIds: Array.isArray(data.destinatariosIds) ? data.destinatariosIds : [],
   };
+}
+
+/**
+ * Obtém a lista única de UIDs de todos os membros que possuem filhos cadastrados no Ministério Kids.
+ */
+export async function getIdsPaisKids(): Promise<string[]> {
+  try {
+    const kidsSnap = await getDocs(kidsRef);
+    const paisUids = new Set<string>();
+    const telefonesPais = new Set<string>();
+
+    kidsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.membroIdResponsavel && typeof data.membroIdResponsavel === "string") {
+        const id = data.membroIdResponsavel.trim();
+        if (id) paisUids.add(id);
+      }
+      if (data.telefoneEmergencia && typeof data.telefoneEmergencia === "string") {
+        const tel = data.telefoneEmergencia.replace(/\D/g, "");
+        if (tel.length >= 8) telefonesPais.add(tel);
+      }
+    });
+
+    // Cruzamento por telefone para responsáveis cadastrados
+    if (telefonesPais.size > 0) {
+      const usersSnap = await getDocs(collection(db, "users"));
+      usersSnap.forEach((userSnap) => {
+        const userData = userSnap.data();
+        const userTel = (userData.telefone || userData.phone || "").replace(/\D/g, "");
+        if (userTel.length >= 8 && telefonesPais.has(userTel)) {
+          paisUids.add(userSnap.id);
+        }
+      });
+    }
+
+    return Array.from(paisUids);
+  } catch (error) {
+    console.error("[kidsService] Erro ao obter IDs dos pais de kids:", error);
+    return [];
+  }
 }
 
 /**
@@ -226,16 +271,71 @@ export function ouvirAvisosKids(
 }
 
 /**
- * Publica um novo aviso no mural do Ministério Kids.
+ * Publica um novo aviso no mural do Ministério Kids direcionado exclusivamente aos pais/responsáveis.
  */
 export async function addAvisoKids(
   dados: Pick<AvisoKids, "titulo" | "mensagem">
 ): Promise<string> {
+  // 1. Identifica exclusivamente os pais com filhos cadastrados
+  const destinatariosIds = await getIdsPaisKids();
+
+  // 2. Grava o documento com restrição apenas para pais
   const docRef = await addDoc(avisosKidsRef, {
     titulo: dados.titulo ?? "",
     mensagem: dados.mensagem ?? "",
     dataCriacao: serverTimestamp(),
+    apenasPaisKids: true,
+    destinatariosIds,
   });
+
+  // 3. Dispara notificações push exclusivamente para os tokens dos pais
+  (async () => {
+    try {
+      if (destinatariosIds.length === 0) {
+        console.log("[kidsService] Nenhum responsável com filho cadastrado encontrado para notificação.");
+        return;
+      }
+
+      const usersSnap = await getDocs(collection(db, "users"));
+      const tokenSet = new Set<string>();
+
+      usersSnap.forEach((docSnap) => {
+        if (destinatariosIds.includes(docSnap.id)) {
+          const userData = docSnap.data();
+          if (
+            userData.expoPushToken &&
+            typeof userData.expoPushToken === "string" &&
+            userData.receberNotificacoes !== false
+          ) {
+            tokenSet.add(userData.expoPushToken);
+          }
+        }
+      });
+
+      const tokens = Array.from(tokenSet);
+      if (tokens.length > 0) {
+        const mensagemResumida =
+          dados.mensagem.length > 100
+            ? dados.mensagem.substring(0, 97) + "..."
+            : dados.mensagem;
+
+        await enviarNotificacaoPushEmMassa(
+          `[Kids] ${dados.titulo}`,
+          mensagemResumida,
+          tokens,
+          {
+            tipo: "aviso_kids",
+            apenasPaisKids: true,
+            destinatariosIds,
+            timestamp: Date.now(),
+          }
+        );
+      }
+    } catch (pushError) {
+      console.error("[kidsService] Erro ao enviar notificações push para os pais:", pushError);
+    }
+  })();
+
   return docRef.id;
 }
 

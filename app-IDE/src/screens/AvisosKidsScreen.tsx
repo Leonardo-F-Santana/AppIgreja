@@ -22,7 +22,9 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../config/firebase';
+import { ouvirAvisosKids } from '../services/kidsService';
 
 // ─── Imagens Locais ───────────────────────────────────────────────────────────
 const bgAvisos = require('../../assets/Img/bdavisos.jpg');
@@ -75,38 +77,34 @@ export default function AvisosKidsScreen({ navigation: navProp }: any = {}) {
   const [filteredAvisos, setFilteredAvisos] = useState<AvisoKids[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 2. Leitura de Dados em Tempo Real (Firebase Firestore ordenado pelo mais recente)
+  // 2. Leitura de Dados em Tempo Real (Restrito exclusivamente a pais de crianças cadastradas)
   useEffect(() => {
     setLoading(true);
 
-    const q = query(
-      collection(db, 'avisos_kids'),
-      orderBy('dataCriacao', 'desc')
-    );
+    let unsubscribeKidsAvisos: (() => void) | null = null;
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const lista: AvisoKids[] = snapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          return {
-            id: docSnap.id,
-            titulo: data.titulo || '',
-            mensagem: data.mensagem || '',
-            dataCriacao: data.dataCriacao || null,
-          };
-        });
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeKidsAvisos) {
+        unsubscribeKidsAvisos();
+        unsubscribeKidsAvisos = null;
+      }
 
+      if (!user) {
+        setAvisos([]);
+        setLoading(false);
+        return;
+      }
+
+      unsubscribeKidsAvisos = ouvirAvisosKids((lista) => {
         setAvisos(lista);
         setLoading(false);
-      },
-      (error) => {
-        console.error('[AvisosKidsScreen] Erro ao carregar avisos:', error);
-        setLoading(false);
-      }
-    );
+      }, user.uid);
+    });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeKidsAvisos) unsubscribeKidsAvisos();
+    };
   }, []);
 
   // 3. Lógica de Busca / Filtro Local (pelo título ou mensagem)

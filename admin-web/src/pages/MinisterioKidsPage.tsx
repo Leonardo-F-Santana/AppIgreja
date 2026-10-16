@@ -584,6 +584,8 @@ export default function MinisterioKidsPage() {
   const [novoAvisoTitulo, setNovoAvisoTitulo] = useState('');
   const [novoAvisoMensagem, setNovoAvisoMensagem] = useState('');
   const [publicandoAviso, setPublicandoAviso] = useState(false);
+  const [buscaAviso, setBuscaAviso] = useState('');
+  const [limiteAvisos, setLimiteAvisos] = useState(10);
 
   // Listener em tempo real
   useEffect(() => {
@@ -643,6 +645,16 @@ export default function MinisterioKidsPage() {
       return matchBusca && matchInclusao;
     });
   }, [kids, filtroTexto, filtroApenasInclusao]);
+
+  // Filtragem dos avisos kids
+  const avisosFiltrados = useMemo(() => {
+    const termo = buscaAviso.trim().toLowerCase();
+    if (!termo) return avisosKids;
+    return avisosKids.filter((aviso) =>
+      (aviso.titulo || '').toLowerCase().includes(termo) ||
+      (aviso.mensagem || '').toLowerCase().includes(termo)
+    );
+  }, [avisosKids, buscaAviso]);
 
   // Contagens
   const totalKids = kids.length;
@@ -986,33 +998,72 @@ export default function MinisterioKidsPage() {
                   <p className="text-xs text-gray-400 mt-1">Use o formulário ao lado para publicar o primeiro aviso.</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                  {avisosKids.map((aviso) => (
-                    <div
-                      key={aviso.id}
-                      className="w-full bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex flex-col gap-2 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-sm font-bold text-yellow-900 leading-tight break-words">
-                          {aviso.titulo}
-                        </h3>
-                        <button
-                          onClick={() => aviso.id && handleExcluirAviso(aviso.id, aviso.titulo)}
-                          className="p-2 rounded-xl text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors flex-shrink-0"
-                          title="Excluir Aviso"
+                <>
+                  {/* Cabeçalho da Coluna Direita (Busca + Contador) */}
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="relative flex-1">
+                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar nos avisos publicados..."
+                        value={buscaAviso}
+                        onChange={(e) => setBuscaAviso(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                      />
+                    </div>
+                    <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                      {avisosFiltrados.length} {avisosFiltrados.length === 1 ? 'aviso' : 'avisos'}
+                    </span>
+                  </div>
+
+                  {/* Container com Rolagem Interna */}
+                  <div className="h-[420px] overflow-y-auto pr-2 space-y-3">
+                    {avisosFiltrados.length === 0 ? (
+                      <div className="text-center py-8 text-gray-400 text-xs font-medium">
+                        Nenhum aviso encontrado para "{buscaAviso}".
+                      </div>
+                    ) : (
+                      avisosFiltrados.slice(0, limiteAvisos).map((aviso) => (
+                        <div
+                          key={aviso.id}
+                          className="w-full bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex flex-col gap-2 shadow-sm"
                         >
-                          <Trash2 size={14} />
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-sm font-bold text-yellow-900 leading-tight break-words">
+                              {aviso.titulo}
+                            </h3>
+                            <button
+                              onClick={() => aviso.id && handleExcluirAviso(aviso.id, aviso.titulo)}
+                              className="p-2 rounded-xl text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors flex-shrink-0"
+                              title="Excluir Aviso"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line break-words">
+                            {aviso.mensagem}
+                          </p>
+                          <span className="text-[11px] text-yellow-700/70 font-medium mt-auto">
+                            {formatarDataAviso(aviso.dataCriacao)}
+                          </span>
+                        </div>
+                      ))
+                    )}
+
+                    {/* Botão Carregar Mais */}
+                    {avisosFiltrados.length > limiteAvisos && (
+                      <div className="pt-2 pb-1 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setLimiteAvisos((prev) => prev + 10)}
+                          className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-gray-100 hover:bg-gray-200/80 rounded-xl transition-colors shadow-sm"
+                        >
+                          Carregar mais avisos
                         </button>
                       </div>
-                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line break-words">
-                        {aviso.mensagem}
-                      </p>
-                      <span className="text-[11px] text-yellow-700/70 font-medium mt-auto">
-                        {formatarDataAviso(aviso.dataCriacao)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>

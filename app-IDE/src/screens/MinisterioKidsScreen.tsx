@@ -224,10 +224,21 @@ export default function MinisterioKidsScreen({ navigation: navProp }: any = {}) 
     };
   }, []);
 
-  // ─── Escutar Coleção avisos_kids (mais recentes primeiro) ──────────────
+  // ─── Escutar Coleção avisos_kids (mais recentes primeiro, restrito a pais) ─
   useEffect(() => {
-    const unsubscribe = ouvirAvisosKids((dados) => setAvisos(dados));
-    return () => unsubscribe();
+    let unsubscribeAvisos: (() => void) | null = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeAvisos) unsubscribeAvisos();
+      if (user) {
+        unsubscribeAvisos = ouvirAvisosKids((dados) => setAvisos(dados), user.uid);
+      } else {
+        setAvisos([]);
+      }
+    });
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeAvisos) unsubscribeAvisos();
+    };
   }, []);
 
   // ─── Ações de Formulário ───────────────────────────────────────────────────
@@ -839,7 +850,7 @@ export default function MinisterioKidsScreen({ navigation: navProp }: any = {}) 
                       <Text style={{ fontSize: 16, marginLeft: 0 }}>💛</Text>
                     </View>
                     <Text style={styles.switchDesc}>
-                      Por favor, marque caso seu filho(a) tenha alguma deficiência, trnastorno do neurodesenvolvimento (como Autismo ou TDAH) ou alergia.
+                      Por favor, marque caso seu filho(a) tenha alguma deficiência, transtorno do neurodesenvolvimento (como Autismo ou TDAH) ou alergia.
                     </Text>
                   </View>
                   <Switch

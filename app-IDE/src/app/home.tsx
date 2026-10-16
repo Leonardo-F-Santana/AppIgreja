@@ -31,6 +31,7 @@ import {
   updateDoc,
   doc,
   getDoc,
+  where,
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import SocialFabMenu from '../components/SocialFabMenu';
@@ -47,6 +48,10 @@ interface Aviso {
   prioridade: 'alta' | 'normal';
   autor: string;
   dataCriacao: Timestamp | null;
+  apenasPaisKids?: boolean;
+  destinatariosIds?: string[];
+  tipo?: string;
+  categoria?: string;
 }
 
 interface Evento {
@@ -185,9 +190,56 @@ export default function HomeScreen() {
   // ─── Estados do Firestore ─────────────────────────────────────────────────
   const [avisoDestaque, setAvisoDestaque] = useState<Aviso | null>(null);
   const [avisosMural, setAvisosMural] = useState<Aviso[]>([]);
+  const [isPaiKids, setIsPaiKids] = useState(false);
   const [proximoEvento, setProximoEvento] = useState<Evento | null>(null);
   const [transmissaoAtual, setTransmissaoAtual] = useState<TransmissaoAoVivo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Escuta se o usuário é pai/responsável de criança cadastrada no Ministério Kids
+  useEffect(() => {
+    let unsubscribeKids: (() => void) | null = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeKids) {
+        unsubscribeKids();
+        unsubscribeKids = null;
+      }
+      if (!user) {
+        setIsPaiKids(false);
+        return;
+      }
+      const qKids = query(
+        collection(db, 'kids'),
+        where('membroIdResponsavel', '==', user.uid)
+      );
+      unsubscribeKids = onSnapshot(
+        qKids,
+        (snap) => {
+          setIsPaiKids(!snap.empty);
+        },
+        () => setIsPaiKids(false)
+      );
+    });
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeKids) unsubscribeKids();
+    };
+  }, []);
+
+  const podeExibirAviso = useCallback((aviso: Aviso | null) => {
+    if (!aviso) return false;
+    const eAvisoKids = Boolean(
+      aviso.apenasPaisKids ||
+      aviso.tipo === 'kids' ||
+      aviso.categoria === 'kids' ||
+      (aviso.destinatariosIds && aviso.destinatariosIds.length > 0)
+    );
+    if (!eAvisoKids) return true; // Aviso comum da igreja: todos veem
+
+    // Aviso kids: apenas pais cadastrados ou membros em destinatariosIds
+    const currentUid = auth.currentUser?.uid;
+    if (currentUid && aviso.destinatariosIds?.includes(currentUid)) return true;
+    return isPaiKids;
+  }, [isPaiKids]);
 
   // ─── Controle do Drawer ───────────────────────────────────────────────────
   const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
@@ -565,32 +617,35 @@ export default function HomeScreen() {
           {/* Mural de Avisos */}
           <View style={styles.avisosSection}>
             <Text style={styles.avisosLabel}>Mural de Avisos:</Text>
-            {avisosMural.length === 0 ? (
-              <Text style={{ color: '#FFFFFF', fontStyle: 'italic', marginLeft: 10 }}>Nenhum aviso no momento</Text>
-            ) : (
-              avisosMural.map((aviso) => (
-                <TouchableOpacity
-                  key={aviso.id}
-                  style={styles.avisoCard}
-                  onPress={() => toggleAviso(aviso.id)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.avisoIconContainer}>
-                    <Feather name="bell" size={20} color="#FFFFFF" />
-                  </View>
-                  <View style={styles.avisoTextContainer}>
-                    <Text style={styles.avisoTitle}>{aviso.titulo}</Text>
-                    <Text style={styles.avisoDate}>{formatarData(aviso.dataCriacao)}</Text>
-                    <Text
-                      style={styles.avisoText}
-                      numberOfLines={avisosExpandidos[aviso.id] ? undefined : 3}
-                    >
-                      {aviso.mensagem}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
+            {(() => {
+              const avisosFiltrados = avisosMural.filter(podeExibirAviso);
+              return avisosFiltrados.length === 0 ? (
+                <Text style={{ color: '#FFFFFF', fontStyle: 'italic', marginLeft: 10 }}>Nenhum aviso no momento</Text>
+              ) : (
+                avisosFiltrados.map((aviso) => (
+                  <TouchableOpacity
+                    key={aviso.id}
+                    style={styles.avisoCard}
+                    onPress={() => toggleAviso(aviso.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.avisoIconContainer}>
+                      <Feather name="bell" size={20} color="#FFFFFF" />
+                    </View>
+                    <View style={styles.avisoTextContainer}>
+                      <Text style={styles.avisoTitle}>{aviso.titulo}</Text>
+                      <Text style={styles.avisoDate}>{formatarData(aviso.dataCriacao)}</Text>
+                      <Text
+                        style={styles.avisoText}
+                        numberOfLines={avisosExpandidos[aviso.id] ? undefined : 3}
+                      >
+                        {aviso.mensagem}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              );
+            })()}
           </View>
 
         </ScrollView>

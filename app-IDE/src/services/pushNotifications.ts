@@ -2,6 +2,9 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
+import { auth } from '../config/firebase';
+import { verificarSeUsuarioEPaiKids } from './kidsService';
+
 let Notifications: any = null;
 if (Constants.appOwnership !== 'expo') {
   try {
@@ -16,13 +19,46 @@ if (Constants.appOwnership !== 'expo') {
 // ─── Configuração do handler de notificações (foreground) ──────────────────
 if (Notifications) {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async (notification: any) => {
+      const data = notification?.request?.content?.data;
+      // Garante que notificações do Ministério Kids só emitam alertas se o usuário for pai/responsável
+      if (data?.apenasPaisKids || data?.tipo === 'aviso_kids') {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          return {
+            shouldShowAlert: false,
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+          };
+        }
+        if (Array.isArray(data?.destinatariosIds) && data.destinatariosIds.length > 0) {
+          if (!data.destinatariosIds.includes(currentUser.uid)) {
+            return {
+              shouldShowAlert: false,
+              shouldPlaySound: false,
+              shouldSetBadge: false,
+            };
+          }
+        } else {
+          const isPai = await verificarSeUsuarioEPaiKids(currentUser.uid);
+          if (!isPai) {
+            return {
+              shouldShowAlert: false,
+              shouldPlaySound: false,
+              shouldSetBadge: false,
+            };
+          }
+        }
+      }
+
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      };
+    },
   });
 }
 

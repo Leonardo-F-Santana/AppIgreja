@@ -19,8 +19,10 @@ import {
   orderBy,
   onSnapshot,
   Timestamp,
+  where,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../config/firebase';
 import { ThemedText } from '../components/themed-text';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -32,6 +34,10 @@ interface Aviso {
   prioridade: 'alta' | 'normal';
   autor: string;
   dataCriacao: Timestamp | null;
+  apenasPaisKids?: boolean;
+  destinatariosIds?: string[];
+  tipo?: string;
+  categoria?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -129,7 +135,38 @@ function EmptyState() {
 export default function AvisosScreen() {
   const router = useRouter();
   const [avisos, setAvisos] = useState<Aviso[]>([]);
+  const [isPaiKids, setIsPaiKids] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Escuta se o usuário logado possui filhos cadastrados no Ministério Kids
+  useEffect(() => {
+    let unsubscribeKids: (() => void) | null = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeKids) {
+        unsubscribeKids();
+        unsubscribeKids = null;
+      }
+      if (!user) {
+        setIsPaiKids(false);
+        return;
+      }
+      const qKids = query(
+        collection(db, 'kids'),
+        where('membroIdResponsavel', '==', user.uid)
+      );
+      unsubscribeKids = onSnapshot(
+        qKids,
+        (snap) => {
+          setIsPaiKids(!snap.empty);
+        },
+        () => setIsPaiKids(false)
+      );
+    });
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeKids) unsubscribeKids();
+    };
+  }, []);
 
   // Subscrição em tempo real ao Firestore
   useEffect(() => {
@@ -212,7 +249,18 @@ export default function AvisosScreen() {
             </View>
           ) : (
             <FlatList<Aviso>
-              data={avisos}
+              data={avisos.filter((aviso) => {
+                const eAvisoKids = Boolean(
+                  aviso.apenasPaisKids ||
+                  aviso.tipo === 'kids' ||
+                  aviso.categoria === 'kids' ||
+                  (aviso.destinatariosIds && aviso.destinatariosIds.length > 0)
+                );
+                if (!eAvisoKids) return true;
+                const currentUid = auth.currentUser?.uid;
+                if (currentUid && aviso.destinatariosIds?.includes(currentUid)) return true;
+                return isPaiKids;
+              })}
               keyExtractor={keyExtractor}
               renderItem={renderAviso}
               showsVerticalScrollIndicator={false}
