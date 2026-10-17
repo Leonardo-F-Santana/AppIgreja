@@ -1,6 +1,1 @@
-vincular a carteirinha ao usuário
-preparar o terreno para que a carteirinha seja bipada e de presença pelo qrcode
-na pagina kids, o card "cuidado  que acolhe" ficar rente a imagem de topo,
-pg kids, mudar o "ver todos" para ver somente os avisos dos kids,
-criar pagina "recursos" para os kids,
-melhorar a rolagem da pagina do ministério kids no painel adm
+
